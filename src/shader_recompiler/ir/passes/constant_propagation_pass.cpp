@@ -246,7 +246,8 @@ void FoldCmpClass(IR::Inst& inst) {
     } else if ((class_mask & IR::FloatClassFunc::Infinity) == IR::FloatClassFunc::Infinity) {
         inst.ReplaceOpcode(IR::Opcode::FPIsInf32);
     } else {
-        UNREACHABLE();
+        inst.ReplaceUsesWith(IR::Value{false});
+        //UNREACHABLE();
     }
 }
 

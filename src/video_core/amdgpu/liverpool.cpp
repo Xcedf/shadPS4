@@ -658,6 +658,9 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, int vqid) {
             LOG_WARNING(Lib_GnmDriver, "SetQueueReg ignored, offset={:#x}, value={:#x}", u32(set_data->reg_offset), *(set_data->data));
             break;
         }
+        case PM4ItOpcode::DmaData: {
+            break;
+        }
         default:
             UNREACHABLE_MSG("Unknown PM4 type 3 opcode {:#x} with count {}",
                             static_cast<u32>(opcode), count);
