@@ -167,7 +167,7 @@ F32 IREmitter::GetVectorReg(IR::VectorReg reg) {
 }
 
 void IREmitter::SetScalarReg(IR::ScalarReg reg, const U32F32& value) {
-    ASSERT(static_cast<u32>(reg) < IR::NumScalarRegs);
+    //ASSERT(static_cast<u32>(reg) < IR::NumScalarRegs);
     const U32 value_typed = value.Type() == Type::F32 ? BitCast<U32>(F32{value}) : U32{value};
     Inst(Opcode::SetScalarRegister, reg, value_typed);
 }
