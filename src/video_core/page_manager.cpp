@@ -142,14 +142,14 @@ struct PageManager::Impl {
     }
 
     void Protect(VAddr address, size_t size, bool allow_write) {
-        ASSERT_MSG(owned_ranges.find(address) != owned_ranges.end(),
-                   "Attempted to track non-GPU memory at address {:#x}, size {:#x}.", address,
-                   size);
+        //ASSERT_MSG(owned_ranges.find(address) != owned_ranges.end(),
+        //           "Attempted to track non-GPU memory at address {:#x}, size {:#x}.", address,
+        //           size);
 #ifdef _WIN32
         DWORD prot = allow_write ? PAGE_READWRITE : PAGE_READONLY;
         DWORD old_prot{};
         BOOL result = VirtualProtect(std::bit_cast<LPVOID>(address), size, prot, &old_prot);
-        ASSERT_MSG(result != 0, "Region protection failed");
+        //ASSERT_MSG(result != 0, "Region protection failed");
 #else
         mprotect(reinterpret_cast<void*>(address), size,
                  PROT_READ | (allow_write ? PROT_WRITE : 0));

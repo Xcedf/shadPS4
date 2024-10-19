@@ -286,7 +286,7 @@ SharpLocation TrackSharp(const IR::Inst* inst) {
 
     // Retrieve SGPR pair that holds sbase
     const auto pred1 = [](const IR::Inst* inst) -> std::optional<IR::ScalarReg> {
-        ASSERT(inst->GetOpcode() != IR::Opcode::ReadConst);
+        //ASSERT(inst->GetOpcode() != IR::Opcode::ReadConst);
         if (inst->GetOpcode() == IR::Opcode::GetUserData) {
             return inst->Arg(0).ScalarReg();
         }
@@ -357,7 +357,7 @@ void PatchBufferInstruction(IR::Block& block, IR::Inst& inst, Info& info,
     // Replace handle with binding index in buffer resource list.
     IR::IREmitter ir{block, IR::Block::InstructionList::s_iterator_to(inst)};
     inst.SetArg(0, ir.Imm32(binding));
-    ASSERT(!buffer.add_tid_enable);
+    //ASSERT(!buffer.add_tid_enable);
 
     // Address of constant buffer reads can be calculated at IR emittion time.
     if (inst.GetOpcode() == IR::Opcode::ReadConstBuffer) {

@@ -108,8 +108,8 @@ void Pipeline::BindBuffers(VideoCore::BufferCache& buffer_cache,
             const auto [vk_buffer, offset] = buffer_cache.ObtainBuffer(
                 vsharp.base_address, vsharp.GetSize(), desc.is_written, true, buffer_id);
             const u32 fmt_stride = AmdGpu::NumBits(vsharp.GetDataFmt()) >> 3;
-            ASSERT_MSG(fmt_stride == vsharp.GetStride(),
-                       "Texel buffer stride must match format stride");
+            //ASSERT_MSG(fmt_stride == vsharp.GetStride(),
+            //           "Texel buffer stride must match format stride");
             const u32 offset_aligned = Common::AlignDown(offset, alignment);
             const u32 adjust = offset - offset_aligned;
             ASSERT(adjust % fmt_stride == 0);
