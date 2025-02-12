@@ -604,21 +604,21 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                                            true);
                 } else if (dma_data->src_sel == DmaDataSrc::Memory &&
                            dma_data->dst_sel == DmaDataDst::Gds) {
-                    rasterizer->InlineData(dma_data->dst_addr_lo,
-                                           dma_data->SrcAddress<const void*>(),
-                                           dma_data->NumBytes(), true);
+                    rasterizer->CopyBuffer(dma_data->dst_addr_lo, dma_data->SrcAddress<VAddr>(),
+                                           dma_data->NumBytes(), true, false);
                 } else if (dma_data->src_sel == DmaDataSrc::Data &&
                            dma_data->dst_sel == DmaDataDst::Memory) {
                     rasterizer->InlineData(dma_data->DstAddress<VAddr>(), &dma_data->data,
                                            sizeof(u32), false);
                 } else if (dma_data->src_sel == DmaDataSrc::Gds &&
                            dma_data->dst_sel == DmaDataDst::Memory) {
-                    // LOG_WARNING(Render_Vulkan, "GDS memory read");
+                    rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(), dma_data->src_addr_lo,
+                                           dma_data->NumBytes(), false, true);
                 } else if (dma_data->src_sel == DmaDataSrc::Memory &&
                            dma_data->dst_sel == DmaDataDst::Memory) {
-                    rasterizer->InlineData(dma_data->DstAddress<VAddr>(),
-                                           dma_data->SrcAddress<const void*>(),
-                                           dma_data->NumBytes(), false);
+                    rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(),
+                                           dma_data->SrcAddress<VAddr>(), dma_data->NumBytes(),
+                                           false, false);
                 } else {
                     UNREACHABLE_MSG("WriteData src_sel = {}, dst_sel = {}",
                                     u32(dma_data->src_sel.Value()), u32(dma_data->dst_sel.Value()));
@@ -706,11 +706,6 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 }
                 break;
             }
-            case PM4ItOpcode::SetPredication: {
-                const auto* set_predication = reinterpret_cast<const PM4CmdSetPredication*>(header);
-                //LOG_WARNING(Lib_GnmDriver, "SetPredication ignored");
-                break;
-            }
             default:
                 UNREACHABLE_MSG("Unknown PM4 type 3 opcode {:#x} with count {}",
                                 static_cast<u32>(opcode), count);
@@ -773,20 +768,20 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, u32 vqid) {
                 rasterizer->InlineData(dma_data->dst_addr_lo, &dma_data->data, sizeof(u32), true);
             } else if (dma_data->src_sel == DmaDataSrc::Memory &&
                        dma_data->dst_sel == DmaDataDst::Gds) {
-                rasterizer->InlineData(dma_data->dst_addr_lo, dma_data->SrcAddress<const void*>(),
-                                       dma_data->NumBytes(), true);
+                rasterizer->CopyBuffer(dma_data->dst_addr_lo, dma_data->SrcAddress<VAddr>(),
+                                       dma_data->NumBytes(), true, false);
             } else if (dma_data->src_sel == DmaDataSrc::Data &&
                        dma_data->dst_sel == DmaDataDst::Memory) {
                 rasterizer->InlineData(dma_data->DstAddress<VAddr>(), &dma_data->data, sizeof(u32),
                                        false);
             } else if (dma_data->src_sel == DmaDataSrc::Gds &&
                        dma_data->dst_sel == DmaDataDst::Memory) {
-                // LOG_WARNING(Render_Vulkan, "GDS memory read");
+                rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(), dma_data->src_addr_lo,
+                                       dma_data->NumBytes(), false, true);
             } else if (dma_data->src_sel == DmaDataSrc::Memory &&
                        dma_data->dst_sel == DmaDataDst::Memory) {
-                rasterizer->InlineData(dma_data->DstAddress<VAddr>(),
-                                       dma_data->SrcAddress<const void*>(), dma_data->NumBytes(),
-                                       false);
+                rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(), dma_data->SrcAddress<VAddr>(),
+                                       dma_data->NumBytes(), false, false);
             } else {
                 UNREACHABLE_MSG("WriteData src_sel = {}, dst_sel = {}",
                                 u32(dma_data->src_sel.Value()), u32(dma_data->dst_sel.Value()));
