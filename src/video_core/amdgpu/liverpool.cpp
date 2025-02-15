@@ -706,6 +706,11 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 }
                 break;
             }
+            case PM4ItOpcode::SetPredication: {
+                const auto* set_predication = reinterpret_cast<const PM4CmdSetPredication*>(header);
+                //LOG_WARNING(Lib_GnmDriver, "SetPredication ignored");
+                break;
+            }
             default:
                 UNREACHABLE_MSG("Unknown PM4 type 3 opcode {:#x} with count {}",
                                 static_cast<u32>(opcode), count);

@@ -225,7 +225,7 @@ s32 PS4_SYSV_ABI sceKernelMapNamedFlexibleMemory(void** addr_in_out, std::size_t
     const auto mem_prot = static_cast<Core::MemoryProt>(prot);
     const auto map_flags = static_cast<Core::MemoryMapFlags>(flags);
     SCOPE_EXIT {
-        LOG_INFO(Kernel_Vmm,
+        LOG_TRACE(Kernel_Vmm,
                  "in_addr = {:#x}, out_addr = {}, len = {:#x}, prot = {:#x}, flags = {:#x}",
                  in_addr, fmt::ptr(*addr_in_out), len, prot, flags);
     };
@@ -305,7 +305,7 @@ s32 PS4_SYSV_ABI sceKernelBatchMap2(OrbisKernelBatchMapEntry* entries, int numEn
             result = sceKernelMapNamedDirectMemory(&entries[i].start, entries[i].length,
                                                    entries[i].protection, flags,
                                                    static_cast<s64>(entries[i].offset), 0, "");
-            LOG_INFO(Kernel_Vmm,
+            LOG_TRACE(Kernel_Vmm,
                      "entry = {}, operation = {}, len = {:#x}, offset = {:#x}, type = {}, "
                      "result = {}",
                      i, entries[i].operation, entries[i].length, entries[i].offset,
