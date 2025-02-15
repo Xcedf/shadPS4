@@ -393,7 +393,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 break;
             }
             case PM4ItOpcode::SetPredication: {
-                LOG_WARNING(Render_Vulkan, "Unimplemented IT_SET_PREDICATION");
+                LOG_TRACE(Render_Vulkan, "Unimplemented IT_SET_PREDICATION");
                 break;
             }
             case PM4ItOpcode::IndexType: {

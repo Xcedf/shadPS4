@@ -103,6 +103,10 @@ static inline vk::Format PromoteFormatToDepth(vk::Format fmt) {
         return vk::Format::eD32Sfloat;
     } else if (fmt == vk::Format::eR16Unorm) {
         return vk::Format::eD16Unorm;
+    } else if (fmt == vk::Format::eR8G8B8A8Unorm) {
+        return vk::Format::eR32Uint;
+    } else if (fmt == vk::Format::eR8G8B8A8Srgb) {
+        return vk::Format::eR32Uint;
     }
     UNREACHABLE_MSG("Unexpected depth format {}", vk::to_string(fmt));
 }
