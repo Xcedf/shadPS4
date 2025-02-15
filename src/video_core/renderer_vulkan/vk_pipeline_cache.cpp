@@ -323,6 +323,7 @@ bool PipelineCache::RefreshGraphicsKey() {
     key.color_buffers.fill({});
     key.blend_controls.fill({});
     key.write_masks.fill({});
+    key.color_swizzles.fill({});
     key.vertex_buffer_formats.fill(vk::Format::eUndefined);
 
     key.patch_control_points = 0;
@@ -355,14 +356,19 @@ bool PipelineCache::RefreshGraphicsKey() {
                                         col_buf.GetDataFmt() == AmdGpu::DataFormat::Format8_8 ||
                                         col_buf.GetDataFmt() == AmdGpu::DataFormat::Format8_8_8_8);
 
+        const auto base_format =
+            LiverpoolToVK::SurfaceFormat(col_buf.info.format, col_buf.GetNumberFmt());
         key.color_formats[remapped_cb] =
-            LiverpoolToVK::SurfaceFormat(col_buf.GetDataFmt(), col_buf.GetNumberFmt());
+            LiverpoolToVK::AdjustColorBufferFormat(base_format, col_buf.info.comp_swap.Value());
+        if (base_format == key.color_formats[remapped_cb]) {
+            key.color_swizzles[remapped_cb] = col_buf.Swizzle();
+        }
         key.color_buffers[remapped_cb] = Shader::PsColorBuffer{
             .num_format = col_buf.GetNumberFmt(),
             .num_conversion = col_buf.GetNumberConversion(),
             .export_format = regs.color_export_format.GetFormat(cb),
             .needs_unorm_fixup = needs_unorm_fixup,
-            .swizzle = col_buf.Swizzle(),
+            .swizzle = key.color_swizzles[remapped_cb],
         };
     }
 
