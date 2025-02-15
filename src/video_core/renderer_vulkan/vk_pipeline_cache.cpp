@@ -300,7 +300,7 @@ bool PipelineCache::RefreshGraphicsKey() {
     key.cull_mode = regs.polygon_control.CullingMode();
     key.clip_space = regs.clipper_control.clip_space;
     key.front_face = regs.polygon_control.front_face;
-    key.num_samples = regs.NumSamples();
+    key.num_samples = regs.aa_config.NumSamples();
 
     const bool skip_cb_binding =
         regs.color_control.mode == AmdGpu::Liverpool::ColorControl::OperationMode::Disable;
@@ -407,7 +407,7 @@ bool PipelineCache::RefreshGraphicsKey() {
 
     switch (regs.stage_enable.raw) {
     case Liverpool::ShaderStageEnable::VgtStages::EsGs: {
-        if (!instance.IsGeometryStageSupported() || !IsGsFeaturesSupported()) {
+        if (true || !instance.IsGeometryStageSupported() || !IsGsFeaturesSupported()) {
             return false;
         }
         if (!TryBindStage(Stage::Export, LogicalStage::Vertex)) {
