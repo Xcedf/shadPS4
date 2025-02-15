@@ -19,7 +19,7 @@
 namespace Libraries::Kernel {
 
 u64 PS4_SYSV_ABI sceKernelGetDirectMemorySize() {
-    LOG_WARNING(Kernel_Vmm, "called");
+    //LOG_WARNING(Kernel_Vmm, "called");
     const auto* memory = Core::Memory::Instance();
     return memory->GetTotalDirectSize();
 }
@@ -64,7 +64,7 @@ int PS4_SYSV_ABI sceKernelAllocateDirectMemory(s64 searchStart, s64 searchEnd, u
 
     *physAddrOut = static_cast<s64>(phys_addr);
 
-    LOG_INFO(Kernel_Vmm,
+    LOG_TRACE(Kernel_Vmm,
              "searchStart = {:#x}, searchEnd = {:#x}, len = {:#x}, "
              "alignment = {:#x}, memoryType = {:#x}, physAddrOut = {:#x}",
              searchStart, searchEnd, len, alignment, memoryType, phys_addr);
@@ -163,7 +163,7 @@ s32 PS4_SYSV_ABI sceKernelReserveVirtualRange(void** addr, u64 len, int flags, u
 int PS4_SYSV_ABI sceKernelMapNamedDirectMemory(void** addr, u64 len, int prot, int flags,
                                                s64 directMemoryStart, u64 alignment,
                                                const char* name) {
-    LOG_INFO(Kernel_Vmm,
+    LOG_TRACE(Kernel_Vmm,
              "in_addr = {}, len = {:#x}, prot = {:#x}, flags = {:#x}, "
              "directMemoryStart = {:#x}, alignment = {:#x}, name = '{}'",
              fmt::ptr(*addr), len, prot, flags, directMemoryStart, alignment, name);
@@ -192,13 +192,13 @@ int PS4_SYSV_ABI sceKernelMapNamedDirectMemory(void** addr, u64 len, int prot, i
         memory->MapMemory(addr, in_addr, len, mem_prot, map_flags, Core::VMAType::Direct, "", false,
                           directMemoryStart, alignment);
 
-    LOG_INFO(Kernel_Vmm, "out_addr = {}", fmt::ptr(*addr));
+    //LOG_INFO(Kernel_Vmm, "out_addr = {}", fmt::ptr(*addr));
     return ret;
 }
 
 int PS4_SYSV_ABI sceKernelMapDirectMemory(void** addr, u64 len, int prot, int flags,
                                           s64 directMemoryStart, u64 alignment) {
-    LOG_INFO(Kernel_Vmm, "called, redirected to sceKernelMapNamedDirectMemory");
+    //LOG_INFO(Kernel_Vmm, "called, redirected to sceKernelMapNamedDirectMemory");
     return sceKernelMapNamedDirectMemory(addr, len, prot, flags, directMemoryStart, alignment, "");
 }
 
@@ -225,7 +225,7 @@ s32 PS4_SYSV_ABI sceKernelMapNamedFlexibleMemory(void** addr_in_out, std::size_t
     const auto mem_prot = static_cast<Core::MemoryProt>(prot);
     const auto map_flags = static_cast<Core::MemoryMapFlags>(flags);
     SCOPE_EXIT {
-        LOG_INFO(Kernel_Vmm,
+        LOG_TRACE(Kernel_Vmm,
                  "in_addr = {:#x}, out_addr = {}, len = {:#x}, prot = {:#x}, flags = {:#x}",
                  in_addr, fmt::ptr(*addr_in_out), len, prot, flags);
     };
@@ -305,7 +305,7 @@ s32 PS4_SYSV_ABI sceKernelBatchMap2(OrbisKernelBatchMapEntry* entries, int numEn
             result = sceKernelMapNamedDirectMemory(&entries[i].start, entries[i].length,
                                                    entries[i].protection, flags,
                                                    static_cast<s64>(entries[i].offset), 0, "");
-            LOG_INFO(Kernel_Vmm,
+            LOG_TRACE(Kernel_Vmm,
                      "entry = {}, operation = {}, len = {:#x}, offset = {:#x}, type = {}, "
                      "result = {}",
                      i, entries[i].operation, entries[i].length, entries[i].offset,
