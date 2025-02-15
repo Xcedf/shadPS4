@@ -36,6 +36,7 @@ struct GraphicsPipelineKey {
     u32 num_color_attachments;
     std::array<vk::Format, Liverpool::NumColorBuffers> color_formats;
     std::array<Shader::PsColorBuffer, Liverpool::NumColorBuffers> color_buffers;
+    std::array<AmdGpu::CompMapping, Liverpool::NumColorBuffers> color_swizzles;
     vk::Format depth_format;
     vk::Format stencil_format;
 

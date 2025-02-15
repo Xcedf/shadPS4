@@ -715,6 +715,31 @@ static constexpr DepthFormatInfo CreateDepthFormatInfo(
     };
 }
 
+vk::Format AdjustColorBufferFormat(vk::Format base_format,
+                                   Liverpool::ColorBuffer::SwapMode comp_swap) {
+    const bool comp_swap_alt = comp_swap == Liverpool::ColorBuffer::SwapMode::Alternate;
+    const bool comp_swap_reverse = comp_swap == Liverpool::ColorBuffer::SwapMode::StandardReverse;
+    const bool comp_swap_alt_reverse =
+        comp_swap == Liverpool::ColorBuffer::SwapMode::AlternateReverse;
+    if (comp_swap_alt) {
+        switch (base_format) {
+        case vk::Format::eR8G8B8A8Unorm:
+            return vk::Format::eB8G8R8A8Unorm;
+        case vk::Format::eB8G8R8A8Unorm:
+            return vk::Format::eR8G8B8A8Unorm;
+        case vk::Format::eR8G8B8A8Srgb:
+            return vk::Format::eB8G8R8A8Srgb;
+        case vk::Format::eB8G8R8A8Srgb:
+            return vk::Format::eR8G8B8A8Srgb;
+        case vk::Format::eA2B10G10R10UnormPack32:
+            return vk::Format::eA2R10G10B10UnormPack32;
+        default:
+            break;
+        }
+    }
+    return base_format;
+}
+
 std::span<const DepthFormatInfo> DepthFormats() {
     using ZFormat = DepthBuffer::ZFormat;
     using StencilFormat = DepthBuffer::StencilFormat;
