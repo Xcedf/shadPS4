@@ -78,6 +78,7 @@ static bool separateupdatefolder = false;
 static bool compatibilityData = false;
 static bool checkCompatibilityOnStartup = false;
 static std::string trophyKey;
+std::vector<u64> skipedHashes = {};
 
 // Gui
 static bool load_game_size = true;
@@ -405,6 +406,10 @@ void setVblankDiv(u32 value) {
 
 void setIsFullscreen(bool enable) {
     isFullscreen = enable;
+}
+
+std::vector<u64> hashesToSkip() {
+    return skipedHashes;
 }
 
 void setFullscreenMode(std::string mode) {
@@ -743,6 +748,7 @@ void load(const std::filesystem::path& path) {
         fullscreenMode =
             toml::find_or<std::string>(gpu, "FullscreenMode", "Fullscreen (Borderless)");
         isHDRAllowed = toml::find_or<bool>(gpu, "allowHDR", false);
+        skipedHashes = toml::find_or<std::vector<u64>>(gpu, "skipShaders", {});
     }
 
     if (data.contains("Vulkan")) {
@@ -878,6 +884,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["Fullscreen"] = isFullscreen;
     data["GPU"]["FullscreenMode"] = fullscreenMode;
     data["GPU"]["allowHDR"] = isHDRAllowed;
+    data["GPU"]["skipShaders"] = skipedHashes;
     data["Vulkan"]["gpuId"] = gpuId;
     data["Vulkan"]["validation"] = vkValidation;
     data["Vulkan"]["validation_sync"] = vkValidationSync;
