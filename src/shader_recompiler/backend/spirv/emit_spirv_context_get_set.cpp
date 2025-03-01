@@ -13,11 +13,13 @@
 namespace Shader::Backend::SPIRV {
 namespace {
 
-Id MiscOutputAttrPointer(EmitContext& ctx, Output output) {
+Id MiscOutputAttrPointer(EmitContext& ctx, IR::Attribute attr, u32 index, u32 element) {
+    const auto& output = ctx.runtime_info.GetOutputs()[index][element];
     switch (output) {
     case Output::None:
-        LOG_WARNING(Render_Recompiler, "Misc. vector output used but disabled on stage {}",
-                    ctx.stage);
+        LOG_WARNING(Render_Recompiler,
+                    "Misc. vector output used but disabled on stage {}, attr {}, comp {}",
+                    ctx.stage, attr, element);
         return {};
     case Output::MrtIndex: {
         ASSERT(ctx.stage == Stage::Geometry || ctx.stage == Stage::Vertex);
@@ -88,8 +90,7 @@ Id OutputAttrPointer(EmitContext& ctx, IR::Attribute attr, u32 element) {
     case IR::Attribute::Position2:
     case IR::Attribute::Position3: {
         const u32 index = u32(attr) - u32(IR::Attribute::Position1);
-        const auto& outputs = ctx.runtime_info.GetOutputs();
-        return MiscOutputAttrPointer(ctx, outputs[index][element]);
+        return MiscOutputAttrPointer(ctx, attr, index, element);
     }
     case IR::Attribute::Depth:
         return ctx.frag_depth;
