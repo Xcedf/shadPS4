@@ -22,12 +22,12 @@ namespace Core::AeroLib {
 constexpr u32 MAX_STUBS = 1024;
 
 u64 UnresolvedStub() {
-    LOG_ERROR(Core, "Returning zero to {}", __builtin_return_address(0));
+    LOG_DEBUG(Core, "Returning zero to {}", __builtin_return_address(0));
     return 0;
 }
 
 static u64 UnknownStub() {
-    LOG_ERROR(Core, "Returning zero to {}", __builtin_return_address(0));
+    LOG_DEBUG(Core, "Returning zero to {}", __builtin_return_address(0));
     return 0;
 }
 
