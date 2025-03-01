@@ -13,36 +13,44 @@
 namespace Shader::Backend::SPIRV {
 namespace {
 
-Id VsOutputAttrPointer(EmitContext& ctx, VsOutput output) {
+Id MiscOutputAttrPointer(EmitContext& ctx, Output output) {
     switch (output) {
-    case VsOutput::ClipDist0:
-    case VsOutput::ClipDist1:
-    case VsOutput::ClipDist2:
-    case VsOutput::ClipDist3:
-    case VsOutput::ClipDist4:
-    case VsOutput::ClipDist5:
-    case VsOutput::ClipDist6:
-    case VsOutput::ClipDist7: {
-        const u32 index = u32(output) - u32(VsOutput::ClipDist0);
+    case Output::None:
+        LOG_WARNING(Render_Recompiler, "Misc. vector output used but disabled on stage {}",
+                    ctx.stage);
+        return {};
+    case Output::MrtIndex: {
+        ASSERT(ctx.stage == Stage::Geometry || ctx.stage == Stage::Vertex);
+        return ctx.output_layer;
+    }
+    case Output::ClipDist0:
+    case Output::ClipDist1:
+    case Output::ClipDist2:
+    case Output::ClipDist3:
+    case Output::ClipDist4:
+    case Output::ClipDist5:
+    case Output::ClipDist6:
+    case Output::ClipDist7: {
+        const u32 index = u32(output) - u32(Output::ClipDist0);
         const Id clip_num{ctx.ConstU32(index)};
         ASSERT_MSG(Sirit::ValidId(ctx.clip_distances), "Clip distance used but not defined");
         return ctx.OpAccessChain(ctx.output_f32, ctx.clip_distances, clip_num);
     }
-    case VsOutput::CullDist0:
-    case VsOutput::CullDist1:
-    case VsOutput::CullDist2:
-    case VsOutput::CullDist3:
-    case VsOutput::CullDist4:
-    case VsOutput::CullDist5:
-    case VsOutput::CullDist6:
-    case VsOutput::CullDist7: {
-        const u32 index = u32(output) - u32(VsOutput::CullDist0);
+    case Output::CullDist0:
+    case Output::CullDist1:
+    case Output::CullDist2:
+    case Output::CullDist3:
+    case Output::CullDist4:
+    case Output::CullDist5:
+    case Output::CullDist6:
+    case Output::CullDist7: {
+        const u32 index = u32(output) - u32(Output::CullDist0);
         const Id cull_num{ctx.ConstU32(index)};
         ASSERT_MSG(Sirit::ValidId(ctx.cull_distances), "Cull distance used but not defined");
         return ctx.OpAccessChain(ctx.output_f32, ctx.cull_distances, cull_num);
     }
     default:
-        UNREACHABLE();
+        UNREACHABLE_MSG("Unsupported output attribute {}", magic_enum::enum_name(output));
     }
 }
 
@@ -76,15 +84,12 @@ Id OutputAttrPointer(EmitContext& ctx, IR::Attribute attr, u32 element) {
     case IR::Attribute::Position0: {
         return ctx.OpAccessChain(ctx.output_f32, ctx.output_position, ctx.ConstU32(element));
     }
-    case IR::Attribute::Position1: {
-        ASSERT(ctx.stage == Stage::Geometry || ctx.stage == Stage::Vertex);
-        ASSERT_MSG(element == 2u, "Unsupported pos1 export");
-        return ctx.output_layer;
-    }
+    case IR::Attribute::Position1:
     case IR::Attribute::Position2:
     case IR::Attribute::Position3: {
         const u32 index = u32(attr) - u32(IR::Attribute::Position1);
-        return VsOutputAttrPointer(ctx, ctx.runtime_info.vs_info.outputs[index][element]);
+        const auto& outputs = ctx.runtime_info.GetOutputs();
+        return MiscOutputAttrPointer(ctx, outputs[index][element]);
     }
     case IR::Attribute::Depth:
         return ctx.frag_depth;
@@ -93,7 +98,7 @@ Id OutputAttrPointer(EmitContext& ctx, IR::Attribute attr, u32 element) {
     }
 }
 
-std::pair<Id, bool> OutputAttrComponentType(EmitContext& ctx, IR::Attribute attr) {
+std::pair<Id, bool> OutputAttrComponentType(EmitContext& ctx, IR::Attribute attr, u32 element) {
     if (IR::IsParam(attr)) {
         if (ctx.stage == Stage::Local && ctx.runtime_info.ls_info.links_with_tcs) {
             return {ctx.F32[1], false};
@@ -110,12 +115,19 @@ std::pair<Id, bool> OutputAttrComponentType(EmitContext& ctx, IR::Attribute attr
     }
     switch (attr) {
     case IR::Attribute::Position0:
-    case IR::Attribute::Position2:
-    case IR::Attribute::Position3:
     case IR::Attribute::Depth:
         return {ctx.F32[1], false};
     case IR::Attribute::Position1:
-        return {ctx.S32[1], true};
+    case IR::Attribute::Position2:
+    case IR::Attribute::Position3: {
+        const u32 index = u32(attr) - u32(IR::Attribute::Position1);
+        const auto output = ctx.runtime_info.GetOutputs()[index][element];
+        if (output == Output::MrtIndex) {
+            return {ctx.S32[1], true};
+        } else {
+            return {ctx.F32[1], false};
+        }
+    }
     default:
         throw NotImplementedException("Write attribute {}", attr);
     }
@@ -342,7 +354,10 @@ Id EmitGetAttributeU32(EmitContext& ctx, IR::Attribute attr, u32 comp) {
 
 void EmitSetAttribute(EmitContext& ctx, IR::Attribute attr, Id value, u32 element) {
     const Id pointer{OutputAttrPointer(ctx, attr, element)};
-    const auto component_type{OutputAttrComponentType(ctx, attr)};
+    if (!Sirit::ValidId(pointer)) {
+        return;
+    }
+    const auto component_type{OutputAttrComponentType(ctx, attr, element)};
     if (component_type.second) {
         ctx.OpStore(pointer, ctx.OpBitcast(component_type.first, value));
     } else {

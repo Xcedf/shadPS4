@@ -39,8 +39,7 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
     const u32 height =
         render_state.height != std::numeric_limits<u32>::max() ? render_state.height : 1;
 
-    const u32 cb_layers =
-        *std::max_element(render_state.cb_slices.begin(), render_state.cb_slices.end());
+    const u32 cb_layers = *std::ranges::max_element(render_state.cb_slices);
     const u32 layers = std::max<u32>(cb_layers, render_state.depth_slices);
 
     const vk::RenderingInfo rendering_info = {
