@@ -115,16 +115,14 @@ int PS4_SYSV_ABI sceKernelClockGettime(s32 clock_id, OrbisKernelTimespec* tp) {
         break;
     }
 
-    time_t raw_time = time(nullptr);
-
-    if (raw_time == (time_t)(-1)) {
-        return ORBIS_KERNEL_ERROR_EINVAL;
+    timespec t{};
+    int result = clock_gettime(pclock_id, &t);
+    tp->tv_sec = t.tv_sec;
+    tp->tv_nsec = t.tv_nsec;
+    if (result == 0) {
+        return ORBIS_OK;
     }
-
-    tp->tv_sec = static_cast<long>(raw_time);
-    tp->tv_nsec = 0;
-
-    return ORBIS_OK;
+    return ORBIS_KERNEL_ERROR_EINVAL;
 }
 
 int PS4_SYSV_ABI posix_clock_gettime(s32 clock_id, OrbisKernelTimespec* time) {
