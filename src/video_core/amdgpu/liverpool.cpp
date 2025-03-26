@@ -121,6 +121,10 @@ void Liverpool::Process(std::stop_token stoken) {
             if (task.done()) {
                 task.destroy();
 
+                if (rasterizer) {
+                    rasterizer->Flush();
+                }
+
                 std::scoped_lock lock{queue.m_access};
                 queue.submits.pop();
 
@@ -132,10 +136,6 @@ void Liverpool::Process(std::stop_token stoken) {
 
         if (submit_done) {
             VideoCore::EndCapture();
-
-            if (rasterizer) {
-                rasterizer->Flush();
-            }
             submit_done = false;
         }
 
