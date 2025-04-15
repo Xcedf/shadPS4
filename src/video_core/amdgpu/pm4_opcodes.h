@@ -71,6 +71,7 @@ enum class PM4ItOpcode : u32 {
     IncrementDeCounter = 0x85,
     WaitOnCeCounter = 0x86,
     WaitOnDeCounterDiff = 0x88,
+    Unk_8e = 0x8e,
     DrawIndexIndirectCountMulti = 0x9d,
 };
 

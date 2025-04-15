@@ -46,7 +46,7 @@ void Translator::S_LOAD_DWORD(int num_dwords, const GcnInst& inst) {
         if (smrd.offset == SQ_SRC_LITERAL) {
             return inst.src[1].code;
         }
-        UNREACHABLE();
+        //UNREACHABLE();
     }();
     const IR::ScalarReg sbase{inst.src[0].code * 2};
     const IR::Value base =

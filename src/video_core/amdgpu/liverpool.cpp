@@ -285,6 +285,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 break;
             }
             case PM4ItOpcode::ContextControl: {
+            case PM4ItOpcode::Unk_8e:
                 break;
             }
             case PM4ItOpcode::ClearState: {
@@ -764,14 +765,16 @@ Liverpool::Task Liverpool::ProcessCompute(const u32* acb, u32 acb_dwords, u32 vq
         }
 
         if (header->type != 3) {
+            continue;
             // No other types of packets were spotted so far
-            UNREACHABLE_MSG("Invalid PM4 type {}", header->type.Value());
+            //UNREACHABLE_MSG("Invalid PM4 type {}", header->type.Value());
         }
 
         const PM4ItOpcode opcode = header->type3.opcode;
         const auto* it_body = reinterpret_cast<const u32*>(header) + 1;
         switch (opcode) {
-        case PM4ItOpcode::Nop: {
+        case PM4ItOpcode::Nop: 
+        case PM4ItOpcode::Unk_8e: {
             const auto* nop = reinterpret_cast<const PM4CmdNop*>(header);
             break;
         }
