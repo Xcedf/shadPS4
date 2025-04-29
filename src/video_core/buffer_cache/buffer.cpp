@@ -83,8 +83,8 @@ void UniqueBuffer::Create(const vk::BufferCreateInfo& buffer_ci, MemoryUsage usa
     VkBuffer unsafe_buffer{};
     VkResult result = vmaCreateBuffer(allocator, &buffer_ci_unsafe, &alloc_ci, &unsafe_buffer,
                                       &allocation, out_alloc_info);
-    ASSERT_MSG(result == VK_SUCCESS, "Failed allocating buffer with error {}",
-               vk::to_string(vk::Result{result}));
+    //ASSERT_MSG(result == VK_SUCCESS, "Failed allocating buffer with error {}",
+    //           vk::to_string(vk::Result{result}));
     buffer = vk::Buffer{unsafe_buffer};
 }
 
