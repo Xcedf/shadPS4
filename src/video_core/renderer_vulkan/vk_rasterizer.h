@@ -76,7 +76,7 @@ public:
         const auto range = decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
         Common::RecursiveSharedLock lock{mapped_ranges_mutex};
         for (const auto& mapped_range : mapped_ranges & range) {
-            func(mapped_range);
+            func(mapped_range.lower(), mapped_range.upper() - mapped_range.lower());
         }
     }
 private:

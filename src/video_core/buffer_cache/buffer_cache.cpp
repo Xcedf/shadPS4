@@ -134,6 +134,11 @@ BufferCache::~BufferCache() = default;
 void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
     const bool is_tracked = IsRegionRegistered(device_addr, size);
     if (is_tracked) {
+        // Mark the page as maybe dirty.
+        ForEachBufferInRange(device_addr, size, [&](BufferId buffer_id, Buffer& buffer) {
+            buffer.is_maybe_dirty = true;
+        });
+
         // Mark the page as CPU modified to stop tracking writes.
         memory_tracker.MarkRegionAsCpuModified(device_addr, size);
     }
@@ -922,6 +927,20 @@ void BufferCache::SynchronizeBuffersInRange(VAddr device_addr, u64 size) {
         // very slow.
         SynchronizeBuffer(buffer, buffer.CpuAddr(), buffer.SizeBytes(), false);
     });
+}
+
+void BufferCache::SynchronizeMappedBuffers() {
+    scheduler.EndRendering();
+    std::shared_lock lk{slot_buffers_mutex};
+    for (auto& buffer : slot_buffers) {
+        if (!buffer.is_deleted && buffer.is_maybe_dirty && buffer.CpuAddr() != 0) {
+            rasterizer.ForEachMappedRangeInRange(buffer.CpuAddr(), buffer.SizeBytes(), [&](VAddr addr,
+                                                  u32 size) {
+                SynchronizeBuffer(buffer, buffer.CpuAddr(), buffer.SizeBytes(), false);
+            });
+        }
+        buffer.is_maybe_dirty = false;
+    }
 }
 
 void BufferCache::MemoryBarrier() {

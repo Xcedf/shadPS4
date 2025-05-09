@@ -139,6 +139,9 @@ public:
     /// Synchronizes all buffers in the specified range.
     void SynchronizeBuffersInRange(VAddr device_addr, u64 size);
 
+    /// Synchronizes all mapped buffers.
+    void SynchronizeMappedBuffers();
+
     /// Record memory barrier. Used for buffers when accessed via BDA.
     void MemoryBarrier();
 
