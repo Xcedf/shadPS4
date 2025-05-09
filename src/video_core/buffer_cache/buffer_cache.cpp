@@ -941,7 +941,7 @@ void BufferCache::SynchronizeMappedBuffers() {
            rasterizer.ForEachMappedRangeInRange(buffer.CpuAddr(), buffer.SizeBytes(), [&](VAddr addr,
                                                   u32 size) {
                 RENDERER_TRACE;
-                SynchronizeBuffer(buffer, addr, size, false);
+                SynchronizeBuffer(buffer, buffer.CpuAddr(), buffer.SizeBytes(), false);
             });
             buffer.is_maybe_dirty = false;
         }
