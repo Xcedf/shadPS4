@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include "common/alignment.h"
+#include "common//debug.h"
 #include "common/scope_exit.h"
 #include "common/types.h"
 #include "video_core/amdgpu/liverpool.h"
@@ -136,6 +137,7 @@ void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
     if (is_tracked) {
         // Mark the page as maybe dirty.
         ForEachBufferInRange(device_addr, size, [&](BufferId buffer_id, Buffer& buffer) {
+            std::scoped_lock lk{maybe_dirty_mutex};
             buffer.is_maybe_dirty = true;
         });
 
@@ -930,16 +932,19 @@ void BufferCache::SynchronizeBuffersInRange(VAddr device_addr, u64 size) {
 }
 
 void BufferCache::SynchronizeMappedBuffers() {
+    RENDERER_TRACE;
     scheduler.EndRendering();
-    std::shared_lock lk{slot_buffers_mutex};
+    std::scoped_lock lk(maybe_dirty_mutex);
+    std::shared_lock lk2{slot_buffers_mutex};
     for (auto& buffer : slot_buffers) {
         if (!buffer.is_deleted && buffer.is_maybe_dirty && buffer.CpuAddr() != 0) {
-            rasterizer.ForEachMappedRangeInRange(buffer.CpuAddr(), buffer.SizeBytes(), [&](VAddr addr,
+           rasterizer.ForEachMappedRangeInRange(buffer.CpuAddr(), buffer.SizeBytes(), [&](VAddr addr,
                                                   u32 size) {
-                SynchronizeBuffer(buffer, buffer.CpuAddr(), buffer.SizeBytes(), false);
+                RENDERER_TRACE;
+                SynchronizeBuffer(buffer, addr, size, false);
             });
+            buffer.is_maybe_dirty = false;
         }
-        buffer.is_maybe_dirty = false;
     }
 }
 

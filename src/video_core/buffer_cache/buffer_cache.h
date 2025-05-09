@@ -200,6 +200,7 @@ private:
     Buffer gds_buffer;
     Buffer bda_pagetable_buffer;
     Buffer fault_buffer;
+    std::shared_mutex maybe_dirty_mutex;
     std::shared_mutex slot_buffers_mutex;
     Common::SlotVector<Buffer> slot_buffers;
     RangeSet gpu_modified_ranges;
