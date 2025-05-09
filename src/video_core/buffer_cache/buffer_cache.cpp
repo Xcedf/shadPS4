@@ -134,16 +134,16 @@ BufferCache::~BufferCache() = default;
 
 void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
     const bool is_tracked = IsRegionRegistered(device_addr, size);
-    if (is_tracked) {
-        // Mark the page as maybe dirty.
-        ForEachBufferInRange(device_addr, size, [&](BufferId buffer_id, Buffer& buffer) {
-            std::scoped_lock lk{maybe_dirty_mutex};
-            buffer.is_maybe_dirty = true;
-        });
-
-        // Mark the page as CPU modified to stop tracking writes.
+    if (is_tracked) {// Mark the page as CPU modified to stop tracking writes.
         memory_tracker.MarkRegionAsCpuModified(device_addr, size);
     }
+}
+
+void BufferCache::MarkMaybeDirty(VAddr device_addr, u64 size) {
+    std::scoped_lock lk{maybe_dirty_mutex};
+    ForEachBufferInRange(device_addr, size, [&](BufferId buffer_id, Buffer& buffer) {
+        buffer.is_maybe_dirty = true;
+    });
 }
 
 void BufferCache::DownloadBufferMemory(Buffer& buffer, VAddr device_addr, u64 size) {

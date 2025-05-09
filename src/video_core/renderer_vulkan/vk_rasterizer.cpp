@@ -965,6 +965,7 @@ bool Rasterizer::InvalidateMemory(VAddr addr, u64 size) {
         return false;
     }
     buffer_cache.InvalidateMemory(addr, size);
+    buffer_cache.MarkMaybeDirty(addr, size);
     texture_cache.InvalidateMemory(addr, size);
     return true;
 }
@@ -987,6 +988,7 @@ void Rasterizer::MapMemory(VAddr addr, u64 size) {
         dma_sync_mapped_ranges = mapped_ranges & dma_sync_ranges;
     }
     page_manager.OnGpuMap(addr, size);
+    buffer_cache.MarkMaybeDirty(addr, size);
 }
 
 void Rasterizer::UnmapMemory(VAddr addr, u64 size) {

@@ -100,6 +100,9 @@ public:
     /// Invalidates any buffer in the logical page range.
     void InvalidateMemory(VAddr device_addr, u64 size);
 
+    /// Mark a region as maybe dirty.
+    void MarkMaybeDirty(VAddr device_addr, u64 size);
+
     /// Binds host vertex buffers for the current draw.
     void BindVertexBuffers(const Vulkan::GraphicsPipeline& pipeline);
 
