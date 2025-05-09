@@ -9,7 +9,7 @@
 namespace Libraries::NpParty {
 
 s32 PS4_SYSV_ABI sceNpPartyCheckCallback() {
-    LOG_ERROR(Lib_NpParty, "(STUBBED) called");
+    //LOG_ERROR(Lib_NpParty, "(STUBBED) called");
     return ORBIS_OK;
 }
 
