@@ -283,6 +283,8 @@ inline NumberFormat RemapNumberFormat(const NumberFormat format, const DataForma
         return NumberFormat::Sint;
     case NumberFormat::Ubnorm:
         return NumberFormat::Unorm;
+    case NumberFormat::SnormNz:
+        return NumberFormat::Snorm;
     case NumberFormat::Float:
         if (data_format == DataFormat::Format8) {
             // Games may ask for 8-bit float when they want to access the stencil component

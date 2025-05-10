@@ -211,6 +211,7 @@ T Translator::GetSrc(const InstOperand& operand) {
         value = get_imm(-s32(operand.code) + SignedConstIntNegMin - 1);
         break;
     case OperandField::LiteralConst:
+    case OperandField::LdsDirect:
         value = get_imm(operand.code);
         break;
     case OperandField::ConstFloatPos_1_0:

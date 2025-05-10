@@ -307,6 +307,11 @@ void Rasterizer::DrawIndirect(bool is_indexed, VAddr arg_address, u32 offset, u3
         return;
     }
 
+    const auto& regs = liverpool->regs;
+    if (regs.primitive_type == AmdGpu::PrimitiveType::QuadList) {
+        return;
+    }
+
     const GraphicsPipeline* pipeline = pipeline_cache.GetGraphicsPipeline();
     if (!pipeline) {
         return;
