@@ -68,6 +68,7 @@ struct UniqueBuffer {
     VmaAllocator allocator;
     VmaAllocation allocation;
     vk::Buffer buffer{};
+    vk::DeviceAddress bda_addr = 0;
 };
 
 class Buffer {
@@ -115,6 +116,11 @@ public:
         return buffer;
     }
 
+    vk::DeviceAddress BufferDeviceAddress() const noexcept {
+        ASSERT_MSG(buffer.bda_addr != 0, "Can't get BDA from a non BDA buffer");
+        return buffer.bda_addr;
+    }
+
     std::optional<vk::BufferMemoryBarrier2> GetBarrier(
         vk::Flags<vk::AccessFlagBits2> dst_acess_mask, vk::PipelineStageFlagBits2 dst_stage,
         u32 offset = 0) {
@@ -143,6 +149,7 @@ public:
     bool is_picked{};
     bool is_coherent{};
     bool is_deleted{};
+    bool is_maybe_dirty{true};
     int stream_score = 0;
     size_t size_bytes = 0;
     std::span<u8> mapped_data;
