@@ -72,7 +72,6 @@ void AjmInstance::ExecuteJob(AjmJob& job) {
         LOG_TRACE(Lib_Ajm, "Initializing instance {}", job.instance_id);
         auto& params = job.input.init_params.value();
         m_codec->Initialize(&params, sizeof(params));
-        is_initialized = true;
     }
     if (job.input.resample_parameters.has_value()) {
         LOG_ERROR(Lib_Ajm, "Unimplemented: resample parameters");
@@ -94,10 +93,6 @@ void AjmInstance::ExecuteJob(AjmJob& job) {
             m_gapless.current.skip_samples += max - m_gapless.init.skip_samples;
             m_gapless.init.skip_samples = max;
         }
-    }
-
-    if (!is_initialized) {
-        return;
     }
 
     if (!job.input.buffer.empty() && !job.output.buffers.empty()) {
