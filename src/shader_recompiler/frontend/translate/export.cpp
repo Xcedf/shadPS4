@@ -145,15 +145,42 @@ void Translator::EmitExport(const GcnInst& inst) {
         IR::VectorReg(inst.src[3].code),
     };
 
+    const auto set_attribute = [&](u32 comp, IR::F32 value) {
+        if (!IR::IsMrt(attrib)) {
+            ir.SetAttribute(attrib, value, comp);
+            return;
+        }
+        const u32 index = u32(attrib) - u32(IR::Attribute::RenderTarget0);
+        const auto col_buf = runtime_info.fs_info.color_buffers[index];
+        const auto converted = IR::ApplyWriteNumberConversion(ir, value, col_buf.num_conversion);
+        const auto [r, g, b, a] = col_buf.swizzle;
+        const std::array swizzle_array = {r, g, b, a};
+        const auto swizzled_comp = swizzle_array[comp];
+        if (u32(swizzled_comp) < u32(AmdGpu::CompSwizzle::Red)) {
+            ir.SetAttribute(attrib, converted, comp);
+            return;
+        }
+        ir.SetAttribute(attrib, converted, u32(swizzled_comp) - u32(AmdGpu::CompSwizzle::Red));
+    };
+
+    const auto unpack = [&](u32 idx) {
+        const IR::Value value =
+            ir.Unpack2x16(AmdGpu::NumberFormat::Float, ir.GetVectorReg(vsrc[idx]));
+        const IR::F32 r = IR::F32{ir.CompositeExtract(value, 0)};
+        const IR::F32 g = IR::F32{ir.CompositeExtract(value, 1)};
+        set_attribute(idx * 2, r);
+        set_attribute(idx * 2 + 1, g);
+    };
+
     // Components are float16 packed into a VGPR
     if (exp.compr) {
         // Export R, G
         if (exp.en & 1) {
-            ExportCompressed(attrib, 0, ir.GetVectorReg<IR::U32>(vsrc[0]));
+            unpack(0);
         }
         // Export B, A
         if ((exp.en >> 2) & 1) {
-            ExportCompressed(attrib, 1, ir.GetVectorReg<IR::U32>(vsrc[1]));
+            unpack(1);
         }
     } else {
         // Components are float32 into separate VGPRS
