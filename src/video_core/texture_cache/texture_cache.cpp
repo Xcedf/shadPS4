@@ -433,9 +433,9 @@ ImageView& TextureCache::FindDepthTarget(BaseDesc& desc) {
     const ImageId image_id = FindImage(desc);
     Image& image = slot_images[image_id];
     image.flags |= ImageFlagBits::GpuModified;
-    image.flags &= ~ImageFlagBits::Dirty;
     image.usage.depth_target = 1u;
     image.usage.stencil = image.info.HasStencil();
+    UpdateImage(image_id);
 
     // Register meta data for this depth buffer
     if (!(image.flags & ImageFlagBits::MetaRegistered)) {
@@ -659,7 +659,7 @@ void TextureCache::TrackImage(ImageId image_id) {
         // Re-track the whole image
         image.track_addr = image_begin;
         image.track_addr_end = image_end;
-        tracker.UpdatePagesCachedCount(image_begin, image.info.guest_size, 1);
+        tracker.UpdatePageWatchers<1>(image_begin, image.info.guest_size);
     } else {
         if (image_begin < image.track_addr) {
             TrackImageHead(image_id);
@@ -682,7 +682,7 @@ void TextureCache::TrackImageHead(ImageId image_id) {
     ASSERT(image.track_addr != 0 && image_begin < image.track_addr);
     const auto size = image.track_addr - image_begin;
     image.track_addr = image_begin;
-    tracker.UpdatePagesCachedCount(image_begin, size, 1);
+    tracker.UpdatePageWatchers<1>(image_begin, size);
 }
 
 void TextureCache::TrackImageTail(ImageId image_id) {
@@ -698,7 +698,7 @@ void TextureCache::TrackImageTail(ImageId image_id) {
     const auto addr = image.track_addr_end;
     const auto size = image_end - image.track_addr_end;
     image.track_addr_end = image_end;
-    tracker.UpdatePagesCachedCount(addr, size, 1);
+    tracker.UpdatePageWatchers<1>(addr, size);
 }
 
 void TextureCache::UntrackImage(ImageId image_id) {
@@ -711,7 +711,7 @@ void TextureCache::UntrackImage(ImageId image_id) {
     image.track_addr = 0;
     image.track_addr_end = 0;
     if (size != 0) {
-        tracker.UpdatePagesCachedCount(addr, size, -1);
+        tracker.UpdatePageWatchers<-1>(addr, size);
     }
 }
 
@@ -730,7 +730,7 @@ void TextureCache::UntrackImageHead(ImageId image_id) {
         // Cehck its hash later.
         MarkAsMaybeDirty(image_id, image);
     }
-    tracker.UpdatePagesCachedCount(image_begin, size, -1);
+    tracker.UpdatePageWatchers<-1>(image_begin, size);
 }
 
 void TextureCache::UntrackImageTail(ImageId image_id) {
@@ -749,7 +749,7 @@ void TextureCache::UntrackImageTail(ImageId image_id) {
         // Cehck its hash later.
         MarkAsMaybeDirty(image_id, image);
     }
-    tracker.UpdatePagesCachedCount(addr, size, -1);
+    tracker.UpdatePageWatchers<-1>(addr, size);
 }
 
 void TextureCache::DeleteImage(ImageId image_id) {
