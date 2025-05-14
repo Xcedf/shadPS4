@@ -115,7 +115,7 @@ int PS4_SYSV_ABI sceUsbdFreeConfigDescriptor() {
 }
 
 int PS4_SYSV_ABI sceUsbdFreeDeviceList() {
-    LOG_ERROR(Lib_Usbd, "(STUBBED) called");
+    LOG_TRACE(Lib_Usbd, "(STUBBED) called");
     return ORBIS_OK;
 }
 
@@ -170,7 +170,7 @@ int PS4_SYSV_ABI sceUsbdGetDeviceDescriptor() {
 }
 
 int PS4_SYSV_ABI sceUsbdGetDeviceList() {
-    LOG_ERROR(Lib_Usbd, "(STUBBED) called");
+    LOG_TRACE(Lib_Usbd, "(STUBBED) called");
     return ORBIS_OK;
 }
 
