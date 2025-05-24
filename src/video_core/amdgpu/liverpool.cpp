@@ -394,7 +394,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 break;
             }
             case PM4ItOpcode::SetPredication: {
-                LOG_WARNING(Render_Vulkan, "Unimplemented IT_SET_PREDICATION");
+                LOG_TRACE(Render_Vulkan, "Unimplemented IT_SET_PREDICATION");
                 break;
             }
             case PM4ItOpcode::IndexType: {
@@ -755,6 +755,10 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                             strmout->buffer_select.Value());
                 break;
             }
+            case PM4ItOpcode::GetLodStats: {
+                LOG_DEBUG(Render_Vulkan, "Unimplemented IT_GET_LOD_STATS");
+                break;
+            }
             default:
                 UNREACHABLE_MSG("Unknown PM4 type 3 opcode {:#x} with count {}",
                                 static_cast<u32>(opcode), count);
@@ -804,8 +808,9 @@ Liverpool::Task Liverpool::ProcessCompute(const u32* acb, u32 acb_dwords, u32 vq
         }
 
         if (header->type != 3) {
+            continue;
             // No other types of packets were spotted so far
-            UNREACHABLE_MSG("Invalid PM4 type {}", header->type.Value());
+            //UNREACHABLE_MSG("Invalid PM4 type {}", header->type.Value());
         }
 
         const PM4ItOpcode opcode = header->type3.opcode;
