@@ -77,7 +77,11 @@ Id OutputAttrPointer(EmitContext& ctx, IR::Attribute attr, u32 element) {
     case IR::Attribute::Position0: {
         return ctx.OpAccessChain(ctx.output_f32, ctx.output_position, ctx.ConstU32(element));
     }
-    case IR::Attribute::Position1:
+    case IR::Attribute::Position1: {
+        ASSERT(ctx.stage == Stage::Geometry || ctx.stage == Stage::Vertex);
+        ASSERT_MSG(element == 2u, "Unsupported pos1 export");
+        return ctx.output_layer;
+    }
     case IR::Attribute::Position2:
     case IR::Attribute::Position3: {
         const u32 index = u32(attr) - u32(IR::Attribute::Position1);
@@ -107,11 +111,12 @@ std::pair<Id, bool> OutputAttrComponentType(EmitContext& ctx, IR::Attribute attr
     }
     switch (attr) {
     case IR::Attribute::Position0:
-    case IR::Attribute::Position1:
     case IR::Attribute::Position2:
     case IR::Attribute::Position3:
     case IR::Attribute::Depth:
         return {ctx.F32[1], false};
+    case IR::Attribute::Position1:
+        return {ctx.S32[1], true};
     default:
         throw NotImplementedException("Write attribute {}", attr);
     }
@@ -344,10 +349,6 @@ Id EmitGetAttributeU32(EmitContext& ctx, IR::Attribute attr, u32 comp) {
 }
 
 void EmitSetAttribute(EmitContext& ctx, IR::Attribute attr, Id value, u32 element) {
-    if (attr == IR::Attribute::Position1) {
-        LOG_WARNING(Render_Vulkan, "Ignoring pos1 export");
-        return;
-    }
     const Id pointer{OutputAttrPointer(ctx, attr, element)};
     const auto component_type{OutputAttrComponentType(ctx, attr)};
     if (component_type.second) {
