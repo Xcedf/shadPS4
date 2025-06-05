@@ -91,7 +91,7 @@ s32 PS4_SYSV_ABI scePlayGoGetEta(OrbisPlayGoHandle handle, const OrbisPlayGoChun
 
 s32 PS4_SYSV_ABI scePlayGoGetInstallSpeed(OrbisPlayGoHandle handle,
                                           OrbisPlayGoInstallSpeed* outSpeed) {
-    LOG_INFO(Lib_PlayGo, "called");
+    LOG_DEBUG(Lib_PlayGo, "called");
 
     if (handle != PlaygoHandle) {
         return ORBIS_PLAYGO_ERROR_BAD_HANDLE;
