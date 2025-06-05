@@ -632,6 +632,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 }
 
                 const u32 num_bytes = dma_data->NumBytes();
+                LOG_WARNING(Render_Vulkan, "Graphics DMA packet size = {}", num_bytes);
                 if (dma_data->src_sel == DmaDataSrc::Data && dma_data->dst_sel == DmaDataDst::Gds) {
                     rasterizer->InlineData(dma_data->dst_addr_lo, &dma_data->data, sizeof(u32),
                                            true);
@@ -851,6 +852,7 @@ Liverpool::Task Liverpool::ProcessCompute(const u32* acb, u32 acb_dwords, u32 vq
             }
 
             const u32 num_bytes = dma_data->NumBytes();
+            LOG_WARNING(Render_Vulkan, "Compute DMA packet size = {}", num_bytes);
             if (dma_data->src_sel == DmaDataSrc::Data && dma_data->dst_sel == DmaDataDst::Gds) {
                 rasterizer->InlineData(dma_data->dst_addr_lo, &dma_data->data, sizeof(u32), true);
             } else if (dma_data->src_sel == DmaDataSrc::Memory &&
