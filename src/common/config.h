@@ -79,6 +79,7 @@ bool patchShaders();
 bool isRdocEnabled();
 bool fpsColor();
 u32 vblankDiv();
+std::vector<u64> hashesToSkip();
 
 void setDebugDump(bool enable);
 void setCollectShaderForDebug(bool enable);
