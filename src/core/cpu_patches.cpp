@@ -88,7 +88,8 @@ static bool FilterTcbAccess(const ZydisDecodedOperand* operands) {
            dst_op.reg.value <= ZYDIS_REGISTER_R15;
 }
 
-static void GenerateTcbAccess(const ZydisDecodedOperand* operands, Xbyak::CodeGenerator& c) {
+static void GenerateTcbAccess(void* /* address */, const ZydisDecodedOperand* operands,
+                              Xbyak::CodeGenerator& c) {
     const auto dst = ZydisToXbyakRegisterOperand(operands[0]);
 
 #if defined(_WIN32)
@@ -126,7 +127,8 @@ static bool FilterNoSSE4a(const ZydisDecodedOperand*) {
     return !cpu.has(Cpu::tSSE4a);
 }
 
-static void GenerateEXTRQ(const ZydisDecodedOperand* operands, Xbyak::CodeGenerator& c) {
+static void GenerateEXTRQ(void* /* address */, const ZydisDecodedOperand* operands,
+                          Xbyak::CodeGenerator& c) {
     bool immediateForm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
                          operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
 
@@ -245,7 +247,8 @@ static void GenerateEXTRQ(const ZydisDecodedOperand* operands, Xbyak::CodeGenera
     }
 }
 
-static void GenerateINSERTQ(const ZydisDecodedOperand* operands, Xbyak::CodeGenerator& c) {
+static void GenerateINSERTQ(void* /* address */, const ZydisDecodedOperand* operands,
+                            Xbyak::CodeGenerator& c) {
     bool immediateForm = operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
                          operands[3].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
 
@@ -383,8 +386,44 @@ static void GenerateINSERTQ(const ZydisDecodedOperand* operands, Xbyak::CodeGene
     }
 }
 
+static void ReplaceMOVNT(void* address, u8 rep_prefix) {
+    // Find the opcode byte
+    // There can be any amount of prefixes but the instruction can't be more than 15 bytes
+    // And we know for sure this is a MOVNTSS/MOVNTSD
+    bool found = false;
+    bool rep_prefix_found = false;
+    int index = 0;
+    u8* ptr = reinterpret_cast<u8*>(address);
+    for (int i = 0; i < 15; i++) {
+        if (ptr[i] == rep_prefix) {
+            rep_prefix_found = true;
+        } else if (ptr[i] == 0x2B) {
+            index = i;
+            found = true;
+            break;
+        }
+    }
+
+    // Some sanity checks
+    ASSERT(found);
+    ASSERT(index >= 2);
+    ASSERT(ptr[index - 1] == 0x0F);
+    ASSERT(rep_prefix_found);
+
+    // This turns the MOVNTSS/MOVNTSD to a MOVSS/MOVSD m, xmm
+    ptr[index] = 0x11;
+}
+
+static void ReplaceMOVNTSS(void* address, const ZydisDecodedOperand*, Xbyak::CodeGenerator&) {
+    ReplaceMOVNT(address, 0xF3);
+}
+
+static void ReplaceMOVNTSD(void* address, const ZydisDecodedOperand*, Xbyak::CodeGenerator&) {
+    ReplaceMOVNT(address, 0xF2);
+}
+
 using PatchFilter = bool (*)(const ZydisDecodedOperand*);
-using InstructionGenerator = void (*)(const ZydisDecodedOperand*, Xbyak::CodeGenerator&);
+using InstructionGenerator = void (*)(void*, const ZydisDecodedOperand*, Xbyak::CodeGenerator&);
 struct PatchInfo {
     /// Filter for more granular patch conditions past just the instruction mnemonic.
     PatchFilter filter;
@@ -400,6 +439,8 @@ static const std::unordered_map<ZydisMnemonic, PatchInfo> Patches = {
     // SSE4a
     {ZYDIS_MNEMONIC_EXTRQ, {FilterNoSSE4a, GenerateEXTRQ, true}},
     {ZYDIS_MNEMONIC_INSERTQ, {FilterNoSSE4a, GenerateINSERTQ, true}},
+    {ZYDIS_MNEMONIC_MOVNTSS, {FilterNoSSE4a, ReplaceMOVNTSS, false}},
+    {ZYDIS_MNEMONIC_MOVNTSD, {FilterNoSSE4a, ReplaceMOVNTSD, false}},
 
 #if defined(_WIN32)
     // Windows needs a trampoline.
@@ -464,9 +505,8 @@ static std::pair<bool, u64> TryPatch(u8* code, PatchModule* module) {
 
             if (needs_trampoline && instruction.length < 5) {
                 // Trampoline is needed but instruction is too short to patch.
-                // Return false and length to fall back to the illegal instruction handler,
-                // or to signal to AOT compilation that this instruction should be skipped and
-                // handled at runtime.
+                // Return false and length to signal to AOT compilation that this instruction
+                // should be skipped and handled at runtime.
                 return std::make_pair(false, instruction.length);
             }
 
@@ -478,7 +518,7 @@ static std::pair<bool, u64> TryPatch(u8* code, PatchModule* module) {
                 auto& trampoline_gen = module->trampoline_gen;
                 const auto trampoline_ptr = trampoline_gen.getCurr();
 
-                patch_info.generator(operands, trampoline_gen);
+                patch_info.generator(code, operands, trampoline_gen);
 
                 // Return to the following instruction at the end of the trampoline.
                 trampoline_gen.jmp(code + instruction.length);
@@ -486,7 +526,7 @@ static std::pair<bool, u64> TryPatch(u8* code, PatchModule* module) {
                 // Replace instruction with near jump to the trampoline.
                 patch_gen.jmp(trampoline_ptr, Xbyak::CodeGenerator::LabelType::T_NEAR);
             } else {
-                patch_info.generator(operands, patch_gen);
+                patch_info.generator(code, operands, patch_gen);
             }
 
             const auto patch_size = patch_gen.getCurr() - code;
@@ -512,136 +552,137 @@ static std::pair<bool, u64> TryPatch(u8* code, PatchModule* module) {
 
 #if defined(ARCH_X86_64)
 
+static bool Is4ByteExtrqOrInsertq(void* code_address) {
+    u8* bytes = (u8*)code_address;
+    if (bytes[0] == 0x66 && bytes[1] == 0x0F && bytes[2] == 0x79) {
+        return true; // extrq
+    } else if (bytes[0] == 0xF2 && bytes[1] == 0x0F && bytes[2] == 0x79) {
+        return true; // insertq
+    } else {
+        return false;
+    }
+}
+
 static bool TryExecuteIllegalInstruction(void* ctx, void* code_address) {
-    ZydisDecodedInstruction instruction;
-    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-    const auto status =
-        Common::Decoder::Instance()->decodeInstruction(instruction, operands, code_address);
+    // We need to decode the instruction to find out what it is. Normally we'd use a fully fleshed
+    // out decoder like Zydis, however Zydis does a bunch of stuff that impact performance that we
+    // don't care about. We can get information about the instruction a lot faster by writing a mini
+    // decoder here, since we know it is definitely an extrq or an insertq. If for some reason we
+    // need to interpret more instructions in the future (I don't see why we would), we can revert
+    // to using Zydis.
+    ZydisMnemonic mnemonic;
+    u8* bytes = (u8*)code_address;
+    if (bytes[0] == 0x66) {
+        mnemonic = ZYDIS_MNEMONIC_EXTRQ;
+    } else if (bytes[0] == 0xF2) {
+        mnemonic = ZYDIS_MNEMONIC_INSERTQ;
+    } else {
+        ZydisDecodedInstruction instruction;
+        ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+        const auto status =
+            Common::Decoder::Instance()->decodeInstruction(instruction, operands, code_address);
+        LOG_ERROR(Core, "Unhandled illegal instruction at code address {}: {}",
+                  fmt::ptr(code_address),
+                  ZYAN_SUCCESS(status) ? ZydisMnemonicGetString(instruction.mnemonic)
+                                       : "Failed to decode");
+        return false;
+    }
 
-    switch (instruction.mnemonic) {
+    ASSERT(bytes[1] == 0x0F && bytes[2] == 0x79);
+
+    // Note: It's guaranteed that there's no REX prefix in these instructions checked by
+    // Is4ByteExtrqOrInsertq
+    u8 modrm = bytes[3];
+    u8 rm = modrm & 0b111;
+    u8 reg = (modrm >> 3) & 0b111;
+    u8 mod = (modrm >> 6) & 0b11;
+
+    ASSERT(mod == 0b11); // Any instruction we interpret here uses reg/reg addressing only
+
+    int dstIndex = reg;
+    int srcIndex = rm;
+
+    switch (mnemonic) {
     case ZYDIS_MNEMONIC_EXTRQ: {
-        bool immediateForm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
-                             operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
-        if (immediateForm) {
-            LOG_CRITICAL(Core, "EXTRQ immediate form should have been patched at code address: {}",
-                         fmt::ptr(code_address));
-            return false;
+        const auto dst = Common::GetXmmPointer(ctx, dstIndex);
+        const auto src = Common::GetXmmPointer(ctx, srcIndex);
+
+        u64 lowQWordSrc;
+        memcpy(&lowQWordSrc, src, sizeof(lowQWordSrc));
+
+        u64 lowQWordDst;
+        memcpy(&lowQWordDst, dst, sizeof(lowQWordDst));
+
+        u64 length = lowQWordSrc & 0x3F;
+        u64 mask;
+        if (length == 0) {
+            length = 64; // for the check below
+            mask = 0xFFFF'FFFF'FFFF'FFFF;
         } else {
-            ASSERT_MSG(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-                           operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-                           operands[0].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                           operands[0].reg.value <= ZYDIS_REGISTER_XMM15 &&
-                           operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                           operands[1].reg.value <= ZYDIS_REGISTER_XMM15,
-                       "Unexpected operand types for EXTRQ instruction");
-
-            const auto dstIndex = operands[0].reg.value - ZYDIS_REGISTER_XMM0;
-            const auto srcIndex = operands[1].reg.value - ZYDIS_REGISTER_XMM0;
-
-            const auto dst = Common::GetXmmPointer(ctx, dstIndex);
-            const auto src = Common::GetXmmPointer(ctx, srcIndex);
-
-            u64 lowQWordSrc;
-            memcpy(&lowQWordSrc, src, sizeof(lowQWordSrc));
-
-            u64 lowQWordDst;
-            memcpy(&lowQWordDst, dst, sizeof(lowQWordDst));
-
-            u64 length = lowQWordSrc & 0x3F;
-            u64 mask;
-            if (length == 0) {
-                length = 64; // for the check below
-                mask = 0xFFFF'FFFF'FFFF'FFFF;
-            } else {
-                mask = (1ULL << length) - 1;
-            }
-
-            u64 index = (lowQWordSrc >> 8) & 0x3F;
-            if (length + index > 64) {
-                // Undefined behavior if length + index is bigger than 64 according to the spec,
-                // we'll warn and continue execution.
-                LOG_TRACE(Core,
-                          "extrq at {} with length {} and index {} is bigger than 64, "
-                          "undefined behavior",
-                          fmt::ptr(code_address), length, index);
-            }
-
-            lowQWordDst >>= index;
-            lowQWordDst &= mask;
-
-            memcpy(dst, &lowQWordDst, sizeof(lowQWordDst));
-
-            Common::IncrementRip(ctx, instruction.length);
-
-            return true;
+            mask = (1ULL << length) - 1;
         }
-        break;
+
+        u64 index = (lowQWordSrc >> 8) & 0x3F;
+        if (length + index > 64) {
+            // Undefined behavior if length + index is bigger than 64 according to the spec,
+            // we'll warn and continue execution.
+            LOG_TRACE(Core,
+                      "extrq at {} with length {} and index {} is bigger than 64, "
+                      "undefined behavior",
+                      fmt::ptr(code_address), length, index);
+        }
+
+        lowQWordDst >>= index;
+        lowQWordDst &= mask;
+
+        memcpy(dst, &lowQWordDst, sizeof(lowQWordDst));
+
+        Common::IncrementRip(ctx, 4);
+
+        return true;
     }
     case ZYDIS_MNEMONIC_INSERTQ: {
-        bool immediateForm = operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
-                             operands[3].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
-        if (immediateForm) {
-            LOG_CRITICAL(Core,
-                         "INSERTQ immediate form should have been patched at code address: {}",
-                         fmt::ptr(code_address));
-            return false;
+        const auto dst = Common::GetXmmPointer(ctx, dstIndex);
+        const auto src = Common::GetXmmPointer(ctx, srcIndex);
+
+        u64 lowQWordSrc, highQWordSrc;
+        memcpy(&lowQWordSrc, src, sizeof(lowQWordSrc));
+        memcpy(&highQWordSrc, (u8*)src + 8, sizeof(highQWordSrc));
+
+        u64 lowQWordDst;
+        memcpy(&lowQWordDst, dst, sizeof(lowQWordDst));
+
+        u64 length = highQWordSrc & 0x3F;
+        u64 mask;
+        if (length == 0) {
+            length = 64; // for the check below
+            mask = 0xFFFF'FFFF'FFFF'FFFF;
         } else {
-            ASSERT_MSG(operands[2].type == ZYDIS_OPERAND_TYPE_UNUSED &&
-                           operands[3].type == ZYDIS_OPERAND_TYPE_UNUSED,
-                       "operands 2 and 3 must be unused for register form.");
-
-            ASSERT_MSG(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-                           operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER,
-                       "operands 0 and 1 must be registers.");
-
-            const auto dstIndex = operands[0].reg.value - ZYDIS_REGISTER_XMM0;
-            const auto srcIndex = operands[1].reg.value - ZYDIS_REGISTER_XMM0;
-
-            const auto dst = Common::GetXmmPointer(ctx, dstIndex);
-            const auto src = Common::GetXmmPointer(ctx, srcIndex);
-
-            u64 lowQWordSrc, highQWordSrc;
-            memcpy(&lowQWordSrc, src, sizeof(lowQWordSrc));
-            memcpy(&highQWordSrc, (u8*)src + 8, sizeof(highQWordSrc));
-
-            u64 lowQWordDst;
-            memcpy(&lowQWordDst, dst, sizeof(lowQWordDst));
-
-            u64 length = highQWordSrc & 0x3F;
-            u64 mask;
-            if (length == 0) {
-                length = 64; // for the check below
-                mask = 0xFFFF'FFFF'FFFF'FFFF;
-            } else {
-                mask = (1ULL << length) - 1;
-            }
-
-            u64 index = (highQWordSrc >> 8) & 0x3F;
-            if (length + index > 64) {
-                // Undefined behavior if length + index is bigger than 64 according to the spec,
-                // we'll warn and continue execution.
-                LOG_TRACE(Core,
-                          "insertq at {} with length {} and index {} is bigger than 64, "
-                          "undefined behavior",
-                          fmt::ptr(code_address), length, index);
-            }
-
-            lowQWordSrc &= mask;
-            lowQWordDst &= ~(mask << index);
-            lowQWordDst |= lowQWordSrc << index;
-
-            memcpy(dst, &lowQWordDst, sizeof(lowQWordDst));
-
-            Common::IncrementRip(ctx, instruction.length);
-
-            return true;
+            mask = (1ULL << length) - 1;
         }
-        break;
+
+        u64 index = (highQWordSrc >> 8) & 0x3F;
+        if (length + index > 64) {
+            // Undefined behavior if length + index is bigger than 64 according to the spec,
+            // we'll warn and continue execution.
+            LOG_TRACE(Core,
+                      "insertq at {} with length {} and index {} is bigger than 64, "
+                      "undefined behavior",
+                      fmt::ptr(code_address), length, index);
+        }
+
+        lowQWordSrc &= mask;
+        lowQWordDst &= ~(mask << index);
+        lowQWordDst |= lowQWordSrc << index;
+
+        memcpy(dst, &lowQWordDst, sizeof(lowQWordDst));
+
+        Common::IncrementRip(ctx, 4);
+
+        return true;
     }
     default: {
-        LOG_ERROR(Core, "Unhandled illegal instruction at code address {}: {}",
-                  fmt::ptr(code_address), ZydisMnemonicGetString(instruction.mnemonic));
-        return false;
+        UNREACHABLE();
     }
     }
 
@@ -695,9 +736,22 @@ static bool PatchesAccessViolationHandler(void* context, void* /* fault_address 
 
 static bool PatchesIllegalInstructionHandler(void* context) {
     void* code_address = Common::GetRip(context);
-    if (!TryPatchJit(code_address)) {
+    if (Is4ByteExtrqOrInsertq(code_address)) {
+        // The instruction is not big enough for a relative jump, don't try to patch it and pass it
+        // to our illegal instruction interpreter directly
         return TryExecuteIllegalInstruction(context, code_address);
+    } else {
+        if (!TryPatchJit(code_address)) {
+            ZydisDecodedInstruction instruction;
+            ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+            const auto status =
+                Common::Decoder::Instance()->decodeInstruction(instruction, operands, code_address);
+            LOG_ERROR(Core, "Failed to patch address {:x} -- mnemonic: {}", (u64)code_address,
+                      ZYAN_SUCCESS(status) ? ZydisMnemonicGetString(instruction.mnemonic)
+                                           : "Failed to decode");
+        }
     }
+
     return true;
 }
 

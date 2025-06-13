@@ -56,7 +56,7 @@ endif()
 if (ARCHITECTURE STREQUAL "x86_64")
     # Target the same CPU architecture as the PS4, to maintain the same level of compatibility.
     # Exclude SSE4a as it is only available on AMD CPUs.
-    add_compile_options(-march=btver2 -mtune=generic -mno-sse4a)
+    add_compile_options(-march=x86-64-v3)
 endif()
 
 if (APPLE AND ARCHITECTURE STREQUAL "x86_64" AND CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
