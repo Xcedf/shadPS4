@@ -9,7 +9,6 @@
 #include "common/slot_vector.h"
 #include "common/types.h"
 #include "video_core/buffer_cache/buffer.h"
-#include "video_core/buffer_cache/memory_tracker_base.h"
 #include "video_core/buffer_cache/range_set.h"
 #include "video_core/multi_level_page_table.h"
 
@@ -17,15 +16,9 @@ namespace AmdGpu {
 struct Liverpool;
 }
 
-namespace Shader {
-namespace Gcn {
-struct FetchShaderData;
-}
-struct Info;
-} // namespace Shader
-
 namespace Vulkan {
 class GraphicsPipeline;
+class Rasterizer;
 }
 
 namespace VideoCore {
@@ -35,6 +28,8 @@ using BufferId = Common::SlotId;
 static constexpr BufferId NULL_BUFFER_ID{0};
 
 class TextureCache;
+class MemoryTracker;
+class PageManager;
 
 class BufferCache {
 public:
@@ -65,6 +60,12 @@ public:
         VAddr end;
         bool has_stream_leap = false;
     };
+
+    using IntervalSet =
+        boost::icl::interval_set<VAddr, std::less,
+                                 ICL_INTERVAL_INSTANCE(ICL_INTERVAL_DEFAULT, VAddr, std::less),
+                                 RangeSetsAllocator>;
+    using IntervalType = typename IntervalSet::interval_type;
 
 public:
     explicit BufferCache(const Vulkan::Instance& instance, Vulkan::Scheduler& scheduler,
@@ -100,6 +101,9 @@ public:
     /// Invalidates any buffer in the logical page range.
     void InvalidateMemory(VAddr device_addr, u64 size);
 
+    /// Waits on pending downloads in the logical page range.
+    void ReadMemory(VAddr device_addr, u64 size);
+
     /// Binds host vertex buffers for the current draw.
     void BindVertexBuffers(const Vulkan::GraphicsPipeline& pipeline);
 
@@ -111,6 +115,9 @@ public:
 
     /// Writes a value to GPU buffer. (uses staging buffer to temporarily store the data)
     void WriteData(VAddr address, const void* value, u32 num_bytes, bool is_gds);
+
+    /// Performs buffer to buffer data copy on the GPU.
+    void CopyBuffer(VAddr dst, VAddr src, u32 num_bytes, bool dst_gds, bool src_gds);
 
     /// Obtains a buffer for the specified region.
     [[nodiscard]] std::pair<Buffer*, u32> ObtainBuffer(VAddr gpu_addr, u32 size, bool is_written,
@@ -190,7 +197,7 @@ private:
     Vulkan::Rasterizer& rasterizer;
     AmdGpu::Liverpool* liverpool;
     TextureCache& texture_cache;
-    PageManager& tracker;
+    std::unique_ptr<MemoryTracker> memory_tracker;
     StreamBuffer staging_buffer;
     StreamBuffer stream_buffer;
     StreamBuffer download_buffer;
@@ -200,7 +207,6 @@ private:
     std::shared_mutex slot_buffers_mutex;
     Common::SlotVector<Buffer> slot_buffers;
     RangeSet gpu_modified_ranges;
-    MemoryTracker memory_tracker;
     PageTable page_table;
     vk::UniqueDescriptorSetLayout fault_process_desc_layout;
     vk::UniquePipeline fault_process_pipeline;
