@@ -241,6 +241,7 @@ T Translator::GetSrc(const InstOperand& operand) {
         value = get_imm(-s32(operand.code) + SignedConstIntNegMin - 1);
         break;
     case OperandField::LiteralConst:
+    case OperandField::LdsDirect:
         value = get_imm(operand.code);
         break;
     case OperandField::ConstFloatPos_1_0:
@@ -296,7 +297,7 @@ T Translator::GetSrc(const InstOperand& operand) {
         }
         break;
     default:
-        UNREACHABLE();
+        UNREACHABLE_MSG("Unsupported GetSrc: {:#x}", static_cast<u32>(operand.field));
     }
 
     if constexpr (is_float) {
