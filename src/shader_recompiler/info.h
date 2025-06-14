@@ -43,7 +43,7 @@ enum class BufferType : u32 {
     Guest,
     Flatbuf,
     BdaPagetable,
-    FaultBuffer,
+    FaultReadback,
     GdsBuffer,
     SharedMemory,
 };

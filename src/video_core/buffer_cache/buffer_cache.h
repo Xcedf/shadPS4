@@ -39,7 +39,7 @@ public:
     static constexpr u64 CACHING_NUMPAGES = u64{1} << (40 - CACHING_PAGEBITS);
 
     static constexpr u64 BDA_PAGETABLE_SIZE = CACHING_NUMPAGES * sizeof(vk::DeviceAddress);
-    static constexpr u64 FAULT_BUFFER_SIZE = CACHING_NUMPAGES / 8; // Bit per page
+    static constexpr u64 FAULT_READBACK_SIZE = CACHING_NUMPAGES / 8; // Bit per page
 
     struct PageData {
         BufferId buffer_id{};
@@ -88,8 +88,8 @@ public:
         return &bda_pagetable_buffer;
     }
 
-    /// Retrieves the fault buffer.
-    [[nodiscard]] Buffer* GetFaultBuffer() noexcept {
+    /// Retrieves the fault readback buffer.
+    [[nodiscard]] Buffer* GetFaultReadbackBuffer() noexcept {
         return &fault_buffer;
     }
 
@@ -139,6 +139,12 @@ public:
 
     /// Return buffer id for the specified region
     BufferId FindBuffer(VAddr device_addr, u32 size);
+
+    /// Queue a region for coverage for DMA.
+    void QueueMemoryCoverage(VAddr device_addr, u64 size);
+
+    /// Covers all queued regions.
+    void CoverQueuedRegions();
 
     /// Processes the fault buffer.
     void ProcessFaultBuffer();
@@ -192,6 +198,8 @@ private:
 
     void DeleteBuffer(BufferId buffer_id);
 
+    void CoverMemory(u64 start, u64 end);
+
     const Vulkan::Instance& instance;
     Vulkan::Scheduler& scheduler;
     Vulkan::Rasterizer& rasterizer;
@@ -204,6 +212,9 @@ private:
     Buffer gds_buffer;
     Buffer bda_pagetable_buffer;
     Buffer fault_buffer;
+    boost::icl::interval_set<VAddr> queued_converages;
+    boost::icl::interval_set<u64> convered_regions;
+    std::shared_mutex covered_regions_mutex;
     std::shared_mutex slot_buffers_mutex;
     Common::SlotVector<Buffer> slot_buffers;
     RangeSet gpu_modified_ranges;
