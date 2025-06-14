@@ -97,6 +97,13 @@ Image::Image(const Vulkan::Instance& instance_, Vulkan::Scheduler& scheduler_,
     if (info.pixel_format == vk::Format::eUndefined) {
         return;
     }
+    //ASSERT_MSG(info.resources.layers * info.resources.levels <= 64, "Layers: {}, levels: {}",
+    //           info.resources.layers, info.resources.levels);
+    u32 shift = info.resources.layers * info.resources.levels <= 64
+                    ? 64 - info.resources.levels * info.resources.layers
+                    : 0;
+    subres_state =
+        std::numeric_limits<u64>::max() >> shift;
     mip_hashes.resize(info.resources.levels);
     // Here we force `eExtendedUsage` as don't know all image usage cases beforehand. In normal case
     // the texture cache should re-create the resource with the usage requested

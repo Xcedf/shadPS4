@@ -79,6 +79,8 @@ void TextureCache::InvalidateMemory(VAddr addr, size_t size) {
             // Modified region overlaps image, so the image was definitely accessed by this fault.
             // Untrack the image, so that the range is unprotected and the guest can write freely.
             image.flags |= ImageFlagBits::CpuDirty;
+            image.ForEachSubresource(pages_start, pages_end - pages_start,
+                                     [&](u32 index) { image.subres_state |= 1ULL << index; });
             UntrackImage(image_id);
         } else if (pages_end < image_end) {
             // This page access may or may not modify the image.
@@ -108,6 +110,8 @@ void TextureCache::InvalidateMemoryFromGPU(VAddr address, size_t max_size) {
             return;
         }
         // Ensure image is reuploaded when accessed again.
+        image.ForEachSubresource(address, max_size,
+                                 [&](u32 index) { image.subres_state |= 1ULL << index; });
         image.flags |= ImageFlagBits::GpuDirty;
     });
 }
@@ -540,6 +544,11 @@ void TextureCache::RefreshImage(Image& image, Vulkan::Scheduler* custom_schedule
 
     boost::container::small_vector<vk::BufferImageCopy, 14> image_copy{};
     for (u32 m = 0; m < num_mips; m++) {
+        const u32 mask = (1 << num_layers) - 1;
+        const u64 subres_state = (image.subres_state >> (m * num_layers)) & mask;
+        if (subres_state == 0) {
+            continue;
+        }
         const u32 width = std::max(image.info.size.width >> m, 1u);
         const u32 height = std::max(image.info.size.height >> m, 1u);
         const u32 depth =
@@ -562,19 +571,40 @@ void TextureCache::RefreshImage(Image& image, Vulkan::Scheduler* custom_schedule
         auto image_extent_width = mip_pitch ? std::min(mip_pitch, width) : width;
         auto image_extent_height = mip_height ? std::min(mip_height, height) : height;
 
-        image_copy.push_back({
-            .bufferOffset = mip.offset,
-            .bufferRowLength = mip_pitch,
-            .bufferImageHeight = mip_height,
-            .imageSubresource{
-                .aspectMask = image.aspect_mask & ~vk::ImageAspectFlagBits::eStencil,
-                .mipLevel = m,
-                .baseArrayLayer = 0,
-                .layerCount = num_layers,
-            },
-            .imageOffset = {0, 0, 0},
-            .imageExtent = {image_extent_width, image_extent_height, depth},
-        });
+        if (subres_state == mask) {
+            image_copy.push_back({
+                .bufferOffset = mip.offset,
+                .bufferRowLength = mip_pitch,
+                .bufferImageHeight = mip_height,
+                .imageSubresource{
+                    .aspectMask = image.aspect_mask & ~vk::ImageAspectFlagBits::eStencil,
+                    .mipLevel = m,
+                    .baseArrayLayer = 0,
+                    .layerCount = num_layers,
+                },
+                .imageOffset = {0, 0, 0},
+                .imageExtent = {image_extent_width, image_extent_height, depth},
+            });
+        } else {
+            for (u32 l = 0; l < num_layers; l++) {
+                if (!(subres_state & (1 << l))) {
+                    continue;
+                }
+                image_copy.push_back({
+                    .bufferOffset = mip.offset + mip.size * l,
+                    .bufferRowLength = mip_pitch,
+                    .bufferImageHeight = mip_height,
+                    .imageSubresource{
+                        .aspectMask = image.aspect_mask & ~vk::ImageAspectFlagBits::eStencil,
+                        .mipLevel = m,
+                        .baseArrayLayer = l,
+                        .layerCount = 1,
+                    },
+                    .imageOffset = {0, 0, 0},
+                    .imageExtent = {image_extent_width, image_extent_height, depth},
+                });
+            }
+        }
     }
 
     if (image_copy.empty()) {
@@ -642,6 +672,7 @@ void TextureCache::RefreshImage(Image& image, Vulkan::Scheduler* custom_schedule
         .pBufferMemoryBarriers = &post_barrier,
     });
     image.flags &= ~ImageFlagBits::Dirty;
+    image.subres_state = 0;
 }
 
 vk::Sampler TextureCache::GetSampler(
