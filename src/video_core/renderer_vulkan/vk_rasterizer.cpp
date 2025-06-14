@@ -456,7 +456,7 @@ bool Rasterizer::BindResources(const Pipeline* pipeline) {
     buffer_infos.clear();
     image_infos.clear();
 
-    bool uses_dma = false;
+    bool fault_enable = false;
 
     // Bind resource buffers and textures.
     Shader::Backend::Bindings binding{};
@@ -469,27 +469,25 @@ bool Rasterizer::BindResources(const Pipeline* pipeline) {
         BindBuffers(*stage, binding, push_data);
         BindTextures(*stage, binding);
 
-        uses_dma |= stage->dma_types != Shader::IR::Type::Void;
+        fault_enable |= stage->dma_types != Shader::IR::Type::Void;
     }
 
     pipeline->BindResources(set_writes, buffer_barriers, push_data);
 
-    if (uses_dma) {
+    if (!fault_process_pending && fault_enable) {
         fault_process_pending = true;
         // We only use fault buffer for DMA right now.
         // First, import any queued host memory, then sync every mapped
         // region that is cached on GPU memory.
         buffer_cache.CoverQueuedRegions();
         {
-            std::shared_lock lock{dma_sync_mapped_ranges_mutex};
-            for (const auto& range : dma_sync_mapped_ranges) {
+            std::shared_lock lock{mapped_ranges_mutex};
+            for (const auto& range : mapped_ranges) {
                 buffer_cache.SynchronizeRange(range.lower(), range.upper() - range.lower());
             }
         }
         buffer_cache.MemoryBarrier();
     }
-
-    fault_process_pending |= uses_dma;
 
     return true;
 }
@@ -726,15 +724,6 @@ void Rasterizer::BindTextures(const Shader::Info& stage, Shader::Backend::Bindin
             .descriptorType = vk::DescriptorType::eSampler,
             .pImageInfo = &image_infos.back(),
         });
-    }
-}
-
-void Rasterizer::AddDmaSyncRanges(const boost::icl::interval_set<VAddr>& ranges) {
-    dma_sync_ranges += ranges;
-    {
-        std::scoped_lock lock{dma_sync_mapped_ranges_mutex};
-        std::shared_lock lock2(mapped_ranges_mutex);
-        dma_sync_mapped_ranges = mapped_ranges & dma_sync_ranges;
     }
 }
 
@@ -993,15 +982,14 @@ bool Rasterizer::IsMapped(VAddr addr, u64 size) {
     }
     const auto range = decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
 
-    std::shared_lock lock{mapped_ranges_mutex};
+    std::shared_lock lock{mapped_ranges_ismapped_mutex};
     return boost::icl::contains(mapped_ranges, range);
 }
 
 void Rasterizer::MapMemory(VAddr addr, u64 size) {
     {
-        std::scoped_lock lock{mapped_ranges_mutex, dma_sync_mapped_ranges_mutex};
+        std::scoped_lock lock{mapped_ranges_mutex, mapped_ranges_ismapped_mutex};
         mapped_ranges += decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
-        dma_sync_mapped_ranges = mapped_ranges & dma_sync_ranges;
     }
     page_manager.OnGpuMap(addr, size);
     buffer_cache.QueueMemoryCoverage(addr, size);
@@ -1012,9 +1000,8 @@ void Rasterizer::UnmapMemory(VAddr addr, u64 size) {
     texture_cache.UnmapMemory(addr, size);
     page_manager.OnGpuUnmap(addr, size);
     {
-        std::scoped_lock lock{mapped_ranges_mutex, dma_sync_mapped_ranges_mutex};
+        std::scoped_lock lock{mapped_ranges_mutex, mapped_ranges_ismapped_mutex};
         mapped_ranges -= decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
-        dma_sync_mapped_ranges -= decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
     }
 }
 

@@ -41,13 +41,8 @@ public:
     static constexpr u64 BDA_PAGETABLE_SIZE = CACHING_NUMPAGES * sizeof(vk::DeviceAddress);
     static constexpr u64 FAULT_READBACK_SIZE = CACHING_NUMPAGES / 8; // Bit per page
 
-    struct PageData {
-        BufferId buffer_id{};
-        bool is_dma_synced = false;
-    };
-
     struct Traits {
-        using Entry = PageData;
+        using Entry = BufferId;
         static constexpr size_t AddressSpaceBits = 40;
         static constexpr size_t FirstLevelBits = 16;
         static constexpr size_t PageBits = CACHING_PAGEBITS;
@@ -138,7 +133,7 @@ public:
     [[nodiscard]] bool IsRegionGpuModified(VAddr addr, size_t size);
 
     /// Return buffer id for the specified region
-    BufferId FindBuffer(VAddr device_addr, u32 size);
+    [[nodiscard]] BufferId FindBuffer(VAddr device_addr, u32 size);
 
     /// Queue a region for coverage for DMA.
     void QueueMemoryCoverage(VAddr device_addr, u64 size);
@@ -160,7 +155,7 @@ private:
     void ForEachBufferInRange(VAddr device_addr, u64 size, Func&& func) {
         const u64 page_end = Common::DivCeil(device_addr + size, CACHING_PAGESIZE);
         for (u64 page = device_addr >> CACHING_PAGEBITS; page < page_end;) {
-            const BufferId buffer_id = page_table[page].buffer_id;
+            const BufferId buffer_id = page_table[page];
             if (!buffer_id) {
                 ++page;
                 continue;
