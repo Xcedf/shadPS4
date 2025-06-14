@@ -9,6 +9,7 @@
 #include "common/slot_vector.h"
 #include "video_core/amdgpu/resource.h"
 #include "video_core/multi_level_page_table.h"
+#include "video_core/renderer_vulkan/liverpool_to_vk.h"
 #include "video_core/texture_cache/image.h"
 #include "video_core/texture_cache/image_view.h"
 #include "video_core/texture_cache/sampler.h"
@@ -66,7 +67,12 @@ public:
         TextureDesc() = default;
         TextureDesc(const AmdGpu::Image& image, const Shader::ImageResource& desc)
             : BaseDesc{desc.is_written ? BindingType::Storage : BindingType::Texture,
-                       ImageInfo{image, desc}, ImageViewInfo{image, desc}} {}
+                       ImageInfo{image, desc}, ImageViewInfo{image, desc}} {
+            if (desc.force_degamma) {
+                view_info.format =
+                    Vulkan::LiverpoolToVK::ForceDegamma(view_info.format, image.GetNumberFmt());
+            }
+        }
     };
 
     struct RenderTargetDesc : public BaseDesc {
