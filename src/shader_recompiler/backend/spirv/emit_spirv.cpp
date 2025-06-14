@@ -270,6 +270,9 @@ void SetupCapabilities(const Info& info, const Profile& profile, EmitContext& ct
     if (info.has_image_query) {
         ctx.AddCapability(spv::Capability::ImageQuery);
     }
+    if (info.has_layer_output) {
+        ctx.AddCapability(spv::Capability::ShaderLayer);
+    }
     if (info.uses_atomic_float_min_max && profile.supports_image_fp32_atomic_min_max) {
         ctx.AddExtension("SPV_EXT_shader_atomic_float_min_max");
         ctx.AddCapability(spv::Capability::AtomicFloat32MinMaxEXT);
