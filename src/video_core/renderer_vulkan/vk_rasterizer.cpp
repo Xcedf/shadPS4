@@ -478,7 +478,7 @@ bool Rasterizer::BindResources(const Pipeline* pipeline) {
         fault_process_pending = true;
         // We only use fault buffer for DMA right now.
         {
-            std::shared_lock lock{dma_sync_mapped_ranges_mutex};
+            std::shared_lock lock{mapped_ranges_mutex};
             for (const auto& range : dma_sync_mapped_ranges) {
                 buffer_cache.SynchronizeRange(range.lower(), range.upper() - range.lower());
             }
