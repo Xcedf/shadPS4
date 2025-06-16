@@ -37,7 +37,7 @@ Rasterizer::Rasterizer(const Instance& instance_, Scheduler& scheduler_,
                        AmdGpu::Liverpool* liverpool_)
     : instance{instance_}, scheduler{scheduler_}, page_manager{this},
       buffer_cache{instance, scheduler, liverpool_, texture_cache, page_manager},
-      texture_cache{instance, scheduler, buffer_cache, page_manager}, liverpool{liverpool_},
+      texture_cache{instance, scheduler, liverpool_,buffer_cache, page_manager}, liverpool{liverpool_},
       memory{Core::Memory::Instance()}, pipeline_cache{instance, scheduler, liverpool} {
     if (!Config::nullGpu()) {
         liverpool->BindRasterizer(this);
@@ -188,8 +188,9 @@ RenderState Rasterizer::PrepareRenderState(u32 mrt_mask) {
         image.binding.is_target = 1u;
 
         const auto slice = image_view.info.range.base.layer;
-        const bool is_depth_clear = regs.depth_render_control.depth_clear_enable ||
-                                    texture_cache.IsMetaCleared(htile_address, slice);
+        const bool clear_enable = regs.depth_render_control.depth_clear_enable;
+        const bool is_meta_cleared = texture_cache.IsMetaCleared(htile_address, slice);
+        const bool is_depth_clear = (clear_enable || is_meta_cleared);
         const bool is_stencil_clear = regs.depth_render_control.stencil_clear_enable;
         ASSERT(desc.view_info.range.extent.levels == 1);
 

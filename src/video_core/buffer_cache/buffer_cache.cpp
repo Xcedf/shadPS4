@@ -51,6 +51,7 @@ void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
     if (memory_tracker->IsRegionGpuModified(device_addr, size)) {
         ReadMemory(device_addr, size);
     }
+    std::scoped_lock lk{data_lock};
     memory_tracker->MarkRegionAsCpuModified(device_addr, size);
 }
 
@@ -372,6 +373,7 @@ void BufferCache::CopyBuffer(VAddr dst, VAddr src, u32 num_bytes, bool dst_gds, 
 
 std::pair<Buffer*, u32> BufferCache::ObtainBuffer(VAddr device_addr, u32 size, bool is_written,
                                                   bool is_texel_buffer, BufferId buffer_id) {
+    std::scoped_lock lk{data_lock};
     // For small uniform buffers that have not been modified by gpu
     // use device local stream buffer to reduce renderpass breaks.
     static constexpr u64 StreamThreshold = CACHING_PAGESIZE;
@@ -390,8 +392,7 @@ std::pair<Buffer*, u32> BufferCache::ObtainBuffer(VAddr device_addr, u32 size, b
 
     // Mark region as GPU modified to get additional tracking needed for readbacks.
     // Somtimes huge buffers may be bound, so set a threshold here as well.
-    static constexpr u64 GpuMarkThreshold = 512_MB;
-    if (is_written && size <= GpuMarkThreshold) {
+    if (is_written) {
         memory_tracker->MarkRegionAsGpuModified(device_addr, size);
         gpu_modified_ranges.Add(device_addr, size);
     }

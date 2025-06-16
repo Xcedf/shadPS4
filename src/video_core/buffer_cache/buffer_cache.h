@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <boost/container/small_vector.hpp>
 #include "common/div_ceil.h"
+#include "common/spin_lock.h"
 #include "common/slot_vector.h"
 #include "common/types.h"
 #include "video_core/buffer_cache/buffer.h"
@@ -179,6 +180,7 @@ private:
     Common::SlotVector<Buffer> slot_buffers;
     RangeSet gpu_modified_ranges;
     PageTable page_table;
+    Common::SpinLock data_lock;
 };
 
 } // namespace VideoCore

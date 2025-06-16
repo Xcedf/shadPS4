@@ -6,6 +6,7 @@
 
 #include "common/assert.h"
 #include "common/debug.h"
+#include "video_core/amdgpu/liverpool.h"
 #include "video_core/buffer_cache/buffer_cache.h"
 #include "video_core/page_manager.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
@@ -20,9 +21,9 @@ static constexpr u64 PageShift = 12;
 static constexpr u64 NumFramesBeforeRemoval = 32;
 
 TextureCache::TextureCache(const Vulkan::Instance& instance_, Vulkan::Scheduler& scheduler_,
-                           BufferCache& buffer_cache_, PageManager& tracker_)
+                           AmdGpu::Liverpool* liverpool_,BufferCache& buffer_cache_, PageManager& tracker_)
     : instance{instance_}, scheduler{scheduler_}, buffer_cache{buffer_cache_}, tracker{tracker_},
-      blit_helper{instance, scheduler}, tile_manager{instance, scheduler} {
+      liverpool{liverpool_}, blit_helper{instance, scheduler}, tile_manager{instance, scheduler} {
     // Create basic null image at fixed image ID.
     const auto null_id = GetNullImage(vk::Format::eR8G8B8A8Unorm);
     ASSERT(null_id.index == NULL_IMAGE_ID.index);
