@@ -405,20 +405,20 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
         }
     }
 
-    u32 image_binding = descriptors.Add(ImageResource{
+    auto image_resource = ImageResource{
         .sharp_idx = tsharp,
         .is_depth = bool(inst_info.is_depth),
         .is_atomic = IsImageAtomicInstruction(inst),
         .is_array = bool(inst_info.is_array),
         .is_written = is_written,
         .is_r128 = bool(inst_info.is_r128),
-    });
+    };
 
     IR::IREmitter ir{block, IR::Block::InstructionList::s_iterator_to(inst)};
 
     if (inst.GetOpcode() == IR::Opcode::ImageSampleRaw) {
         // Read sampler sharp.
-        const auto [sampler_binding, sampler] = [&] -> std::pair<u32, AmdGpu::Sampler> {
+        const auto [sampler_binding, image_binding] = [&] -> std::pair<u32, u32> {
             ASSERT(producer->GetOpcode() == IR::Opcode::CompositeConstructU32x2);
             const IR::Value& handle = producer->Arg(1);
             // Inline sampler resource.
@@ -435,17 +435,23 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
             const auto ssharp_handle = handle.InstRecursive();
             const auto& [ssharp_ud, disable_aniso] = TryDisableAnisoLod0(ssharp_handle);
             const auto ssharp = TrackSharp(ssharp_ud, info);
+            const auto sampler = info.ReadUdSharp<AmdGpu::Sampler>(ssharp);
+            if (sampler.force_degamma) {
+                image_resource.force_degamma = true;
+            }
+            u32 image_binding = descriptors.Add(image_resource);
             const auto binding = descriptors.Add(SamplerResource{
                 .sharp_idx = ssharp,
                 .associated_image = image_binding,
                 .disable_aniso = disable_aniso,
             });
-            return {binding, info.ReadUdSharp<AmdGpu::Sampler>(ssharp)};
+            return {binding, image_binding};
         }();
         // Patch image and sampler handle.
         inst.SetArg(0, ir.Imm32(image_binding | sampler_binding << 16));
     } else {
         // Patch image handle.
+        u32 image_binding = descriptors.Add(image_resource);
         inst.SetArg(0, ir.Imm32(image_binding));
     }
 }
