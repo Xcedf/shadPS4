@@ -49,8 +49,7 @@ void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
         return;
     }
     if (memory_tracker->IsRegionGpuModified(device_addr, size)) {
-        //ReadMemory(device_addr, size);
-        memory_tracker->UnmarkRegionAsGpuModified(device_addr, size);
+        ReadMemory(device_addr, size);
     }
     memory_tracker->MarkRegionAsCpuModified(device_addr, size);
 }
