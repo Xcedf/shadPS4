@@ -647,11 +647,10 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                     rasterizer->InlineData(dma_data->DstAddress<VAddr>(), &dma_data->data,
                                            sizeof(u32), false);
                 } else if (dma_data->src_sel == DmaDataSrc::Gds &&
-                           dma_data->dst_sel == DmaDataDst::Memory) {
+                           (dma_data->dst_sel == DmaDataDst::Memory ||
+                            dma_data->dst_sel == DmaDataDst::MemoryUsingL2)) {
                     rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(), dma_data->src_addr_lo,
                                            num_bytes, false, true);
-                } else if (dma_data->src_sel == DmaDataSrc::Gds &&
-                           dma_data->dst_sel == DmaDataDst::MemoryUsingL2) { 
                 } else if ((dma_data->src_sel == DmaDataSrc::Memory ||
                             dma_data->src_sel == DmaDataSrc::MemoryUsingL2) &&
                            (dma_data->dst_sel == DmaDataDst::Memory ||
@@ -890,11 +889,10 @@ Liverpool::Task Liverpool::ProcessCompute(const u32* acb, u32 acb_dwords, u32 vq
                 rasterizer->InlineData(dma_data->DstAddress<VAddr>(), &dma_data->data, sizeof(u32),
                                        false);
             } else if (dma_data->src_sel == DmaDataSrc::Gds &&
-                       dma_data->dst_sel == DmaDataDst::Memory) {
+                       (dma_data->dst_sel == DmaDataDst::Memory ||
+                        dma_data->dst_sel == DmaDataDst::MemoryUsingL2)) {
                 rasterizer->CopyBuffer(dma_data->DstAddress<VAddr>(), dma_data->src_addr_lo,
                                        num_bytes, false, true);
-            } else if (dma_data->src_sel == DmaDataSrc::Gds &&
-                       dma_data->dst_sel == DmaDataDst::MemoryUsingL2) {
             } else if ((dma_data->src_sel == DmaDataSrc::Memory ||
                         dma_data->src_sel == DmaDataSrc::MemoryUsingL2) &&
                        (dma_data->dst_sel == DmaDataDst::Memory ||
