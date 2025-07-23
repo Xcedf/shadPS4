@@ -106,8 +106,8 @@ u32 m_language = 1; // english
 // Keys
 static std::string trophyKey = "";
 
-// Expected number of items in the config file
-static constexpr u64 total_entries = 55;
+// Config version, used to determine if a user's config file is outdated.
+static std::string config_version = Common::g_scm_rev;
 
 int getVolumeSlider() {
     return volumeSlider;
@@ -614,8 +614,6 @@ void load(const std::filesystem::path& path) {
         return;
     }
 
-    u64 entry_count = 0;
-
     if (data.contains("General")) {
         const toml::value& general = data.at("General");
 
@@ -637,8 +635,6 @@ void load(const std::filesystem::path& path) {
         checkCompatibilityOnStartup = toml::find_or<bool>(general, "checkCompatibilityOnStartup",
                                                           checkCompatibilityOnStartup);
         chooseHomeTab = toml::find_or<std::string>(general, "chooseHomeTab", chooseHomeTab);
-
-        entry_count += general.size();
     }
 
     if (data.contains("Input")) {
@@ -653,8 +649,6 @@ void load(const std::filesystem::path& path) {
         useUnifiedInputConfig =
             toml::find_or<bool>(input, "useUnifiedInputConfig", useUnifiedInputConfig);
         micDevice = toml::find_or<std::string>(input, "micDevice", micDevice);
-
-        entry_count += input.size();
     }
 
     if (data.contains("GPU")) {
@@ -676,8 +670,6 @@ void load(const std::filesystem::path& path) {
         isFullscreen = toml::find_or<bool>(gpu, "Fullscreen", isFullscreen);
         fullscreenMode = toml::find_or<std::string>(gpu, "FullscreenMode", fullscreenMode);
         isHDRAllowed = toml::find_or<bool>(gpu, "allowHDR", isHDRAllowed);
-
-        entry_count += gpu.size();
     }
 
     if (data.contains("Vulkan")) {
@@ -691,10 +683,9 @@ void load(const std::filesystem::path& path) {
         vkHostMarkers = toml::find_or<bool>(vk, "hostMarkers", vkHostMarkers);
         vkGuestMarkers = toml::find_or<bool>(vk, "guestMarkers", vkGuestMarkers);
         rdocEnable = toml::find_or<bool>(vk, "rdocEnable", rdocEnable);
-
-        entry_count += vk.size();
     }
 
+    std::string current_version = {};
     if (data.contains("Debug")) {
         const toml::value& debug = data.at("Debug");
 
@@ -703,8 +694,7 @@ void load(const std::filesystem::path& path) {
             toml::find_or<bool>(debug, "isSeparateLogFilesEnabled", isSeparateLogFilesEnabled);
         isShaderDebug = toml::find_or<bool>(debug, "CollectShader", isShaderDebug);
         isFpsColor = toml::find_or<bool>(debug, "FPSColor", isFpsColor);
-
-        entry_count += debug.size();
+        current_version = toml::find_or<std::string>(debug, "ConfigVersion", current_version);
     }
 
     if (data.contains("GUI")) {
@@ -736,26 +726,20 @@ void load(const std::filesystem::path& path) {
 
         settings_addon_install_dir =
             toml::find_fs_path_or(gui, "addonInstallDir", settings_addon_install_dir);
-
-        entry_count += gui.size();
     }
 
     if (data.contains("Settings")) {
         const toml::value& settings = data.at("Settings");
         m_language = toml::find_or<int>(settings, "consoleLanguage", m_language);
-
-        entry_count += settings.size();
     }
 
     if (data.contains("Keys")) {
         const toml::value& keys = data.at("Keys");
         trophyKey = toml::find_or<std::string>(keys, "TrophyKey", trophyKey);
-
-        entry_count += keys.size();
     }
 
     // Run save after loading to generate any missing fields with default values.
-    if (entry_count != total_entries) {
+    if (config_version != current_version) {
         fmt::print("Outdated config detected, updating config file.\n");
         save(path);
     }
@@ -862,6 +846,7 @@ void save(const std::filesystem::path& path) {
     data["Debug"]["CollectShader"] = isShaderDebug;
     data["Debug"]["isSeparateLogFilesEnabled"] = isSeparateLogFilesEnabled;
     data["Debug"]["FPSColor"] = isFpsColor;
+    data["Debug"]["ConfigVersion"] = config_version;
     data["Keys"]["TrophyKey"] = trophyKey;
 
     std::vector<std::string> install_dirs;
