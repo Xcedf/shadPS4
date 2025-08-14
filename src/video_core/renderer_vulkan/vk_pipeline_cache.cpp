@@ -325,6 +325,7 @@ bool PipelineCache::RefreshGraphicsKey() {
     // attachments. This might be not a case as HW color buffers can be bound in an arbitrary
     // order. We need to do some arrays compaction at this stage
     key.num_color_attachments = 0;
+    key.color_formats.fill(vk::Format::eUndefined);
     key.color_buffers.fill({});
     key.blend_controls.fill({});
     key.write_masks.fill({});
@@ -360,13 +361,19 @@ bool PipelineCache::RefreshGraphicsKey() {
                                         col_buf.GetDataFmt() == AmdGpu::DataFormat::Format8_8 ||
                                         col_buf.GetDataFmt() == AmdGpu::DataFormat::Format8_8_8_8);
 
+        const auto format =
+            LiverpoolToVK::SurfaceFormat(col_buf.GetDataFmt(), col_buf.GetNumberFmt());
+        key.color_formats[remapped_cb] =
+            LiverpoolToVK::AdjustColorBufferFormat(format, col_buf.info.comp_swap.Value());
+        bool equal_formats = format == key.color_formats[remapped_cb];
+
         key.color_buffers[remapped_cb] = Shader::PsColorBuffer{
             .data_format = col_buf.GetDataFmt(),
             .num_format = col_buf.GetNumberFmt(),
             .num_conversion = col_buf.GetNumberConversion(),
             .export_format = regs.color_export_format.GetFormat(cb),
             .needs_unorm_fixup = needs_unorm_fixup,
-            .swizzle = col_buf.Swizzle(),
+            .swizzle = col_buf.Swizzle(equal_formats),
         };
     }
 
