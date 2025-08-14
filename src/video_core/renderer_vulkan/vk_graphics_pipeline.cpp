@@ -264,7 +264,7 @@ GraphicsPipeline::GraphicsPipeline(
 
     const vk::PipelineRenderingCreateInfo pipeline_rendering_ci = {
         .colorAttachmentCount = key.num_color_attachments,
-        .pColorAttachmentFormats = color_formats.data(),
+        .pColorAttachmentFormats = key.color_formats.data(),
         .depthAttachmentFormat = key.z_format != Liverpool::DepthBuffer::ZFormat::Invalid
                                      ? depth_format
                                      : vk::Format::eUndefined,
