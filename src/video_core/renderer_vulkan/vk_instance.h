@@ -139,6 +139,13 @@ public:
         return depth_range_unrestricted;
     }
 
+    /// Returns true when the extendedDynamicState3RasterizationSamples feature of
+    /// VK_EXT_extended_dynamic_state3 is supported.
+    bool IsDynamicRasterizationSamplesSupported() const {
+        return dynamic_state_3 &&
+               dynamic_state_3_features.extendedDynamicState3RasterizationSamples;
+    }
+
     /// Returns true when the extendedDynamicState3ColorWriteMask feature of
     /// VK_EXT_extended_dynamic_state3 is supported.
     bool IsDynamicColorWriteMaskSupported() const {
@@ -473,6 +480,7 @@ private:
     bool amd_shader_trinary_minmax{};
     bool shader_atomic_float2{};
     bool workgroup_memory_explicit_layout{};
+    bool dynamic_rendering_unused_attachments{};
     bool portability_subset{};
     bool maintenance_8{};
     bool supports_memory_budget{};
