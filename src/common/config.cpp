@@ -48,6 +48,7 @@ static std::string isSideTrophy = "right";
 static bool compatibilityData = false;
 static bool checkCompatibilityOnStartup = false;
 static bool isConnectedToNetwork = false;
+std::vector<u64> skipedHashes = {};
 
 // Input
 static int cursorState = HideCursorState::Idle;
@@ -445,6 +446,10 @@ void setVblankDiv(u32 value) {
     vblankDivider = value;
 }
 
+std::vector<u64> hashesToSkip() {
+    return skipedHashes;
+}
+
 void setIsFullscreen(bool enable) {
     isFullscreen = enable;
 }
@@ -711,6 +716,7 @@ void load(const std::filesystem::path& path) {
         shouldDumpShaders = toml::find_or<bool>(gpu, "dumpShaders", shouldDumpShaders);
         shouldPatchShaders = toml::find_or<bool>(gpu, "patchShaders", shouldPatchShaders);
         vblankDivider = toml::find_or<int>(gpu, "vblankDivider", vblankDivider);
+        skipedHashes = toml::find_or<std::vector<u64>>(gpu, "skipShaders", {});
         isFullscreen = toml::find_or<bool>(gpu, "Fullscreen", isFullscreen);
         fullscreenMode = toml::find_or<std::string>(gpu, "FullscreenMode", fullscreenMode);
         isHDRAllowed = toml::find_or<bool>(gpu, "allowHDR", isHDRAllowed);
@@ -878,6 +884,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["dumpShaders"] = shouldDumpShaders;
     data["GPU"]["patchShaders"] = shouldPatchShaders;
     data["GPU"]["vblankDivider"] = vblankDivider;
+    data["GPU"]["skipShaders"] = skipedHashes;
     data["GPU"]["Fullscreen"] = isFullscreen;
     data["GPU"]["FullscreenMode"] = fullscreenMode;
     data["GPU"]["allowHDR"] = isHDRAllowed;
