@@ -530,7 +530,7 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
     const auto tsharp = TrackSharp(image_handle, block, inst_info.pc);
     const bool is_atomic = IsImageAtomicInstruction(inst);
     const bool is_written = inst.GetOpcode() == IR::Opcode::ImageWrite || is_atomic;
-    const ImageResource image_res = {
+    ImageResource image_res = {
         .sharp_idx = tsharp,
         .is_depth = bool(inst_info.is_depth),
         .is_atomic = is_atomic,
@@ -574,7 +574,7 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
         }
     }
 
-    u32 image_binding = descriptors.Add(image_res);
+    u32 image_binding = 0;
 
     IR::IREmitter ir{block, IR::Block::InstructionList::s_iterator_to(inst)};
 
@@ -588,6 +588,7 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
                 .raw0 = u64(sampler->Arg(1).U32()) << 32 | u64(sampler->Arg(0).U32()),
                 .raw1 = u64(sampler->Arg(3).U32()) << 32 | u64(sampler->Arg(2).U32()),
             };
+            image_binding = descriptors.Add(image_res);
             sampler_binding = descriptors.Add(SamplerResource{
                 .sharp_idx = std::numeric_limits<u32>::max(),
                 .inline_sampler = inline_sampler,
@@ -598,6 +599,11 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
             const auto& [sampler_handle, disable_aniso] =
                 TryDisableAnisoLod0(sampler->Arg(0).InstRecursive());
             const auto ssharp = TrackSharp(sampler_handle, block, inst_info.pc);
+            const auto sampler = info.ReadUdSharp<AmdGpu::Sampler>(ssharp);
+            if (sampler.force_degamma) {
+                image_res.force_degamma = true;
+            }
+            image_binding = descriptors.Add(image_res);
             sampler_binding = descriptors.Add(SamplerResource{
                 .sharp_idx = ssharp,
                 .is_inline_sampler = false,
@@ -607,6 +613,7 @@ void PatchImageSharp(IR::Block& block, IR::Inst& inst, Info& info, Descriptors& 
         }
         inst.SetArg(0, ir.Imm32(image_binding | sampler_binding << 16));
     } else {
+        image_binding = descriptors.Add(image_res);
         inst.SetArg(0, ir.Imm32(image_binding));
     }
 }
