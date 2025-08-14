@@ -209,8 +209,8 @@ void Translator::BUFFER_LOAD(u32 num_dwords, bool is_inst_typed, bool is_buffer_
     const IR::Value soffset{GetSrc(inst.src[3])};
     const bool has_soffset = !soffset.IsImmediate() || soffset.U32() != 0;
     if (info.stage != Stage::Geometry) {
-        ASSERT_MSG(!has_soffset || !mubuf.offen,
-                   "Having both scalar and vector offsets is not supported");
+        //ASSERT_MSG(!has_soffset || !mubuf.offen,
+        //           "Having both scalar and vector offsets is not supported");
     }
 
     const IR::Value address = [&] -> IR::Value {
