@@ -604,7 +604,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                     // immediately
                     regs.cp_strmout_cntl.offset_update_done = 1;
                 } else if (event->event_index.Value() == EventIndex::ZpassDone) {
-                    LOG_WARNING(Render, "Unimplemented occlusion query");
+                    LOG_DEBUG(Render, "Unimplemented occlusion query");
                 }
                 break;
             }
@@ -844,7 +844,7 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, u32 vqid) {
             break;
         }
 
-        if (header->type == 2) {
+        /*if (header->type == 2) {
             // Type-2 packet are used for padding purposes
             next_dw_off = 1;
             acb = NextPacket(acb, next_dw_off);
@@ -853,9 +853,10 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, u32 vqid) {
                 *queue.read_addr %= queue.ring_size_dw;
             }
             continue;
-        }
+        }*/
 
         if (header->type != 3) {
+            continue;
             // No other types of packets were spotted so far
             UNREACHABLE_MSG("Invalid PM4 type {}", header->type.Value());
         }
