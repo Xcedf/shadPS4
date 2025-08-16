@@ -58,6 +58,7 @@ static bool isMotionControlsEnabled = true;
 static bool useUnifiedInputConfig = true;
 static std::string micDevice = "Default Device";
 static std::string defaultControllerID = "";
+static bool backgroundControllerInput = false;
 
 // These two entries aren't stored in the config
 static bool overrideControllerColor = false;
@@ -612,6 +613,14 @@ void setDefaultControllerID(std::string id) {
     defaultControllerID = id;
 }
 
+bool getBackgroundControllerInput() {
+    return backgroundControllerInput;
+}
+
+void setBackgroundControllerInput(bool enable) {
+    backgroundControllerInput = enable;
+}
+
 void load(const std::filesystem::path& path) {
     // If the configuration file does not exist, create it and return
     std::error_code error;
@@ -671,6 +680,8 @@ void load(const std::filesystem::path& path) {
         useUnifiedInputConfig =
             toml::find_or<bool>(input, "useUnifiedInputConfig", useUnifiedInputConfig);
         micDevice = toml::find_or<std::string>(input, "micDevice", micDevice);
+        backgroundControllerInput =
+            toml::find_or<bool>(input, "backgroundControllerInput", backgroundControllerInput);
     }
 
     if (data.contains("GPU")) {
@@ -844,6 +855,7 @@ void save(const std::filesystem::path& path) {
     data["Input"]["isMotionControlsEnabled"] = isMotionControlsEnabled;
     data["Input"]["useUnifiedInputConfig"] = useUnifiedInputConfig;
     data["Input"]["micDevice"] = micDevice;
+    data["Input"]["backgroundControllerInput"] = backgroundControllerInput;
     data["GPU"]["screenWidth"] = windowWidth;
     data["GPU"]["screenHeight"] = windowHeight;
     data["GPU"]["internalScreenWidth"] = internalScreenWidth;
@@ -948,6 +960,7 @@ void setDefaultValues() {
     controllerCustomColorRGB[1] = 0;
     controllerCustomColorRGB[2] = 255;
     micDevice = "Default Device";
+    backgroundControllerInput = false;
 
     // GPU
     windowWidth = 1280;
