@@ -313,7 +313,7 @@ bool PipelineCache::RefreshGraphicsKey() {
     key.prim_type = regs.primitive_type;
     key.polygon_mode = regs.polygon_control.PolyMode();
     key.logic_op = regs.color_control.rop3;
-    key.num_samples = regs.NumSamples();
+    key.num_samples = instance.IsDynamicRasterizationSamplesSupported() ? 1 : regs.NumSamples();
 
     const bool skip_cb_binding =
         regs.color_control.mode == AmdGpu::Liverpool::ColorControl::OperationMode::Disable;
