@@ -74,6 +74,7 @@ std::string_view NameOf(DataFormat fmt) {
     case DataFormat::FormatBc7:
         return "FormatBc7";
     default:
+        return "Format8_8_8_8";
         UNREACHABLE();
     }
 }
@@ -107,6 +108,7 @@ std::string_view NameOf(NumberFormat fmt) {
     case NumberFormat::Ubscaled:
         return "Unscaled";
     default:
+        return "Sint";
         UNREACHABLE();
     }
 }
