@@ -146,12 +146,6 @@ public:
                dynamic_state_3_features.extendedDynamicState3RasterizationSamples;
     }
 
-    /// Returns true when the extendedDynamicState3ColorWriteMask feature of
-    /// VK_EXT_extended_dynamic_state3 is supported.
-    bool IsDynamicColorWriteMaskSupported() const {
-        return dynamic_state_3 && dynamic_state_3_features.extendedDynamicState3ColorWriteMask;
-    }
-
     /// Returns true when VK_EXT_vertex_input_dynamic_state is supported.
     bool IsVertexInputDynamicState() const {
         return vertex_input_dynamic_state;

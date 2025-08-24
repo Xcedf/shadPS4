@@ -260,8 +260,6 @@ bool Instance::CreateDevice() {
     if (dynamic_state_3) {
         dynamic_state_3_features =
             feature_chain.get<vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT>();
-        LOG_INFO(Render_Vulkan, "- extendedDynamicState3ColorWriteMask: {}",
-                 dynamic_state_3_features.extendedDynamicState3ColorWriteMask);
         LOG_INFO(Render_Vulkan, "- extendedDynamicState3RasterizationSamples: {}",
                  dynamic_state_3_features.extendedDynamicState3RasterizationSamples);
     }
@@ -434,8 +432,6 @@ bool Instance::CreateDevice() {
         vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT{
             .extendedDynamicState3RasterizationSamples =
                 dynamic_state_3_features.extendedDynamicState3RasterizationSamples,
-            .extendedDynamicState3ColorWriteMask =
-                dynamic_state_3_features.extendedDynamicState3ColorWriteMask,
         },
         vk::PhysicalDeviceDepthClipControlFeaturesEXT{
             .depthClipControl = true,
