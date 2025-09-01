@@ -78,6 +78,7 @@ static bool shouldPatchShaders = false;
 static u32 vblankDivider = 1;
 static bool isFullscreen = false;
 static std::string fullscreenMode = "Windowed";
+static std::string presentMode = "Mailbox";
 static bool isHDRAllowed = false;
 
 // Vulkan
@@ -191,6 +192,10 @@ bool getIsFullscreen() {
 
 std::string getFullscreenMode() {
     return fullscreenMode;
+}
+
+std::string getPresentMode() {
+    return presentMode;
 }
 
 bool getisTrophyPopupDisabled() {
@@ -457,6 +462,10 @@ void setFullscreenMode(std::string mode) {
     fullscreenMode = mode;
 }
 
+void setPresentMode(std::string mode) {
+    presentMode = mode;
+}
+
 void setisTrophyPopupDisabled(bool disable) {
     isTrophyPopupDisabled = disable;
 }
@@ -715,6 +724,7 @@ void load(const std::filesystem::path& path) {
         vblankDivider = toml::find_or<int>(gpu, "vblankDivider", vblankDivider);
         isFullscreen = toml::find_or<bool>(gpu, "Fullscreen", isFullscreen);
         fullscreenMode = toml::find_or<std::string>(gpu, "FullscreenMode", fullscreenMode);
+        presentMode = toml::find_or<std::string>(gpu, "presentMode", presentMode);
         isHDRAllowed = toml::find_or<bool>(gpu, "allowHDR", isHDRAllowed);
     }
 
@@ -882,6 +892,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["vblankDivider"] = vblankDivider;
     data["GPU"]["Fullscreen"] = isFullscreen;
     data["GPU"]["FullscreenMode"] = fullscreenMode;
+    data["GPU"]["presentMode"] = presentMode;
     data["GPU"]["allowHDR"] = isHDRAllowed;
     data["Vulkan"]["gpuId"] = gpuId;
     data["Vulkan"]["validation"] = vkValidation;
@@ -990,6 +1001,7 @@ void setDefaultValues() {
     vblankDivider = 1;
     isFullscreen = false;
     fullscreenMode = "Windowed";
+    presentMode = "Mailbox";
     isHDRAllowed = false;
 
     // Vulkan
