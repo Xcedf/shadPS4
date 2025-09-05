@@ -142,6 +142,7 @@ static ConfigEntry<bool> directMemoryAccessEnabled(false);
 static ConfigEntry<bool> shouldDumpShaders(false);
 static ConfigEntry<bool> shouldPatchShaders(false);
 static ConfigEntry<u32> vblankDivider(1);
+std::vector<u64> skipedHashes = {};
 static ConfigEntry<bool> isFullscreen(false);
 static ConfigEntry<string> fullscreenMode("Windowed");
 static ConfigEntry<string> presentMode("Mailbox");
@@ -539,6 +540,10 @@ void setVblankDiv(u32 value) {
     vblankDivider.base_value = value;
 }
 
+std::vector<u64> hashesToSkip() {
+    return skipedHashes;
+}
+
 void setIsFullscreen(bool enable) {
     isFullscreen.base_value = enable;
 }
@@ -829,6 +834,7 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         shouldDumpShaders.setFromToml(gpu, "dumpShaders", is_game_specific);
         shouldPatchShaders.setFromToml(gpu, "patchShaders", is_game_specific);
         vblankDivider.setFromToml(gpu, "vblankDivider", is_game_specific);
+        skipedHashes = toml::find_or<std::vector<u64>>(gpu, "skipShaders", {});
         isFullscreen.setFromToml(gpu, "Fullscreen", is_game_specific);
         fullscreenMode.setFromToml(gpu, "FullscreenMode", is_game_specific);
         presentMode.setFromToml(gpu, "presentMode", is_game_specific);
@@ -1001,6 +1007,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["dumpShaders"] = shouldDumpShaders.base_value;
     data["GPU"]["patchShaders"] = shouldPatchShaders.base_value;
     data["GPU"]["vblankDivider"] = vblankDivider.base_value;
+    data["GPU"]["skipShaders"] = skipedHashes;
     data["GPU"]["Fullscreen"] = isFullscreen.base_value;
     data["GPU"]["FullscreenMode"] = fullscreenMode.base_value;
     data["GPU"]["presentMode"] = presentMode.base_value;
