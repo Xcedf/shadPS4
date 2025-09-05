@@ -136,6 +136,7 @@ static ConfigEntry<u32> internalScreenHeight(720);
 static ConfigEntry<bool> isNullGpu(false);
 static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<bool> readbacksEnabled(false);
+static ReadbackAccuracy readbackAccuracyMode = ReadbackAccuracy::High;
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
 static ConfigEntry<bool> directMemoryAccessEnabled(false);
 static ConfigEntry<bool> shouldDumpShaders(false);
@@ -364,6 +365,10 @@ bool nullGpu() {
 
 bool copyGPUCmdBuffers() {
     return shouldCopyGPUBuffers.get();
+}
+
+ReadbackAccuracy readbackAccuracy() {
+    return readbackAccuracyMode;
 }
 
 bool readbacks() {
@@ -816,6 +821,8 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         internalScreenHeight.setFromToml(gpu, "internalScreenHeight", is_game_specific);
         isNullGpu.setFromToml(gpu, "nullGpu", is_game_specific);
         shouldCopyGPUBuffers.setFromToml(gpu, "copyGPUBuffers", is_game_specific);
+        readbackAccuracyMode = static_cast<ReadbackAccuracy>(
+            toml::find_or<int>(gpu, "readbackAccuracy", static_cast<int>(readbackAccuracyMode)));
         readbacksEnabled.setFromToml(gpu, "readbacks", is_game_specific);
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
         directMemoryAccessEnabled.setFromToml(gpu, "directMemoryAccess", is_game_specific);
@@ -988,6 +995,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["nullGpu"] = isNullGpu.base_value;
     data["GPU"]["copyGPUBuffers"] = shouldCopyGPUBuffers.base_value;
     data["GPU"]["readbacks"] = readbacksEnabled.base_value;
+    data["GPU"]["readbackAccuracy"] = static_cast<int>(readbackAccuracyMode);
     data["GPU"]["readbackLinearImages"] = readbackLinearImagesEnabled.base_value;
     data["GPU"]["directMemoryAccess"] = directMemoryAccessEnabled.base_value;
     data["GPU"]["dumpShaders"] = shouldDumpShaders.base_value;
@@ -1098,6 +1106,7 @@ void setDefaultValues() {
     internalScreenHeight = 720;
     isNullGpu = false;
     shouldCopyGPUBuffers = false;
+    readbackAccuracyMode = ReadbackAccuracy::High;
     readbacksEnabled = false;
     readbackLinearImagesEnabled = false;
     directMemoryAccessEnabled = false;
