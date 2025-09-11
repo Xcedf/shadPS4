@@ -171,7 +171,7 @@ s32 AjmContext::InstanceCreate(AjmCodecType codec_type, AjmInstanceFlags flags, 
     }
     *out_instance = opt_index.value();
 
-    LOG_INFO(Lib_Ajm, "instance = {}", *out_instance);
+    LOG_DEBUG(Lib_Ajm, "instance = {}", *out_instance);
     return ORBIS_OK;
 }
 
