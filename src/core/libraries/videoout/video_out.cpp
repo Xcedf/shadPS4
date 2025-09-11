@@ -156,7 +156,7 @@ s32 PS4_SYSV_ABI sceVideoOutSubmitFlip(s32 handle, s32 bufferIndex, s32 flipMode
     }
 
     if (flipMode != 1) {
-        LOG_WARNING(Lib_VideoOut, "flipmode = {}", flipMode);
+        LOG_DEBUG(Lib_VideoOut, "flipmode = {}", flipMode);
     }
 
     if (bufferIndex < -1 || bufferIndex > 15) {
@@ -445,7 +445,7 @@ s32 PS4_SYSV_ABI sceVideoOutConfigureOutputMode_(s32 handle, u32 reserved, const
 }
 
 s32 PS4_SYSV_ABI sceVideoOutSetWindowModeMargins(s32 handle, s32 top, s32 bottom) {
-    LOG_ERROR(Lib_VideoOut, "(STUBBED) called top = {}, bottom = {}", top, bottom);
+    LOG_DEBUG(Lib_VideoOut, "(STUBBED) called top = {}, bottom = {}", top, bottom);
     return ORBIS_OK;
 }
 
