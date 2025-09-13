@@ -148,6 +148,7 @@ static ConfigEntry<u32> internalScreenHeight(720);
 static ConfigEntry<bool> isNullGpu(false);
 static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<bool> readbacksEnabled(false);
+static ReadbackAccuracy readbackAccuracyMode = ReadbackAccuracy::High;
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
 static ConfigEntry<bool> directMemoryAccessEnabled(false);
 static ConfigEntry<bool> shouldDumpShaders(false);
@@ -376,6 +377,10 @@ bool nullGpu() {
 
 bool copyGPUCmdBuffers() {
     return shouldCopyGPUBuffers.get();
+}
+
+ReadbackAccuracy readbackAccuracy() {
+    return readbackAccuracyMode;
 }
 
 bool readbacks() {
@@ -840,6 +845,8 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         isNullGpu.setFromToml(gpu, "nullGpu", is_game_specific);
         shouldCopyGPUBuffers.setFromToml(gpu, "copyGPUBuffers", is_game_specific);
         readbacksEnabled.setFromToml(gpu, "readbacks", is_game_specific);
+        readbackAccuracyMode = static_cast<ReadbackAccuracy>(
+            toml::find_or<int>(gpu, "readbackAccuracy", static_cast<int>(readbackAccuracyMode)));
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
         directMemoryAccessEnabled.setFromToml(gpu, "directMemoryAccess", is_game_specific);
         shouldDumpShaders.setFromToml(gpu, "dumpShaders", is_game_specific);
@@ -1091,6 +1098,7 @@ void save(const std::filesystem::path& path, bool is_game_specific) {
         data["GPU"]["internalScreenWidth"] = internalScreenWidth.base_value;
         data["GPU"]["internalScreenHeight"] = internalScreenHeight.base_value;
         data["GPU"]["patchShaders"] = shouldPatchShaders.base_value;
+        data["GPU"]["readbackAccuracy"] = static_cast<int>(readbackAccuracyMode);
 
         data["Vulkan"]["validation_gpu"] = vkValidationGpu.base_value;
 
@@ -1142,6 +1150,7 @@ void setDefaultValues(bool is_game_specific) {
     isNullGpu.set(false, is_game_specific);
     shouldCopyGPUBuffers.set(false, is_game_specific);
     readbacksEnabled.set(false, is_game_specific);
+    readbackAccuracyMode = ReadbackAccuracy::High;
     readbackLinearImagesEnabled.set(false, is_game_specific);
     shouldDumpShaders.set(false, is_game_specific);
     vblankFrequency.set(60, is_game_specific);

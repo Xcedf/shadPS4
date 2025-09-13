@@ -5,7 +5,7 @@
 
 #include <filesystem>
 #include <vector>
-#include "types.h"
+#include "common/types.h"
 
 namespace Config {
 
@@ -14,7 +14,17 @@ struct GameInstallDir {
     bool enabled;
 };
 
-enum HideCursorState : int { Never, Idle, Always };
+enum HideCursorState : u32 {
+    Never,
+    Idle,
+    Always,
+};
+
+enum class ReadbackAccuracy : u32 {
+    Low,
+    High,
+    Extreme,
+};
 
 void load(const std::filesystem::path& path, bool is_game_specific = false);
 void save(const std::filesystem::path& path, bool is_game_specific = false);
@@ -56,6 +66,7 @@ bool copyGPUCmdBuffers();
 void setCopyGPUCmdBuffers(bool enable, bool is_game_specific = false);
 bool readbacks();
 void setReadbacks(bool enable, bool is_game_specific = false);
+ReadbackAccuracy readbackAccuracy();
 bool readbackLinearImages();
 void setReadbackLinearImages(bool enable, bool is_game_specific = false);
 bool directMemoryAccess();
