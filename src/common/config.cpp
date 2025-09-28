@@ -65,6 +65,7 @@ static u32 screenHeight = 720;
 static bool isNullGpu = false;
 static bool shouldCopyGPUBuffers = false;
 static bool readbacksEnabled = false;
+static bool readbackLinearImagesEnabled = false;
 static bool shouldDumpShaders = false;
 static bool shouldPatchShaders = false;
 static u32 vblankDivider = 1;
@@ -102,7 +103,7 @@ u32 m_language = 1; // english
 static std::string trophyKey = "";
 
 // Expected number of items in the config file
-static constexpr u64 total_entries = 51;
+static constexpr u64 total_entries = 52;
 
 bool allowHDR() {
     return isHDRAllowed;
@@ -259,6 +260,10 @@ bool copyGPUCmdBuffers() {
 
 bool readbacks() {
     return readbacksEnabled;
+}
+
+bool readbackLinearImages() {
+    return readbackLinearImagesEnabled;
 }
 
 bool dumpShaders() {
@@ -622,6 +627,8 @@ void load(const std::filesystem::path& path) {
         isNullGpu = toml::find_or<bool>(gpu, "nullGpu", isNullGpu);
         shouldCopyGPUBuffers = toml::find_or<bool>(gpu, "copyGPUBuffers", shouldCopyGPUBuffers);
         readbacksEnabled = toml::find_or<bool>(gpu, "readbacks", readbacksEnabled);
+        readbackLinearImagesEnabled =
+            toml::find_or<bool>(gpu, "readbackLinearImages", readbackLinearImagesEnabled);
         shouldDumpShaders = toml::find_or<bool>(gpu, "dumpShaders", shouldDumpShaders);
         shouldPatchShaders = toml::find_or<bool>(gpu, "patchShaders", shouldPatchShaders);
         vblankDivider = toml::find_or<int>(gpu, "vblankDivider", vblankDivider);
@@ -791,6 +798,7 @@ void save(const std::filesystem::path& path) {
     data["GPU"]["nullGpu"] = isNullGpu;
     data["GPU"]["copyGPUBuffers"] = shouldCopyGPUBuffers;
     data["GPU"]["readbacks"] = readbacksEnabled;
+    data["GPU"]["readbackLinearImages"] = readbackLinearImagesEnabled;
     data["GPU"]["dumpShaders"] = shouldDumpShaders;
     data["GPU"]["patchShaders"] = shouldPatchShaders;
     data["GPU"]["vblankDivider"] = vblankDivider;
@@ -890,6 +898,7 @@ void setDefaultValues() {
     isNullGpu = false;
     shouldCopyGPUBuffers = false;
     readbacksEnabled = false;
+    readbackLinearImagesEnabled = false;
     shouldDumpShaders = false;
     shouldPatchShaders = false;
     vblankDivider = 1;

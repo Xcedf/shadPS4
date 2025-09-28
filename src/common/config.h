@@ -47,6 +47,7 @@ bool copyGPUCmdBuffers();
 void setCopyGPUCmdBuffers(bool enable);
 bool readbacks();
 void setReadbacks(bool enable);
+bool readbackLinearImages();
 bool dumpShaders();
 void setDumpShaders(bool enable);
 u32 vblankDiv();
