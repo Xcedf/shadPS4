@@ -757,7 +757,7 @@ int PS4_SYSV_ABI sceNetEpollControl(OrbisNetId epollid, OrbisNetEpollFlag op, Or
 }
 
 int PS4_SYSV_ABI sceNetEpollCreate(const char* name, int flags) {
-    LOG_INFO(Lib_Net, "called, name = {}, flags = {}", name, flags);
+    LOG_DEBUG(Lib_Net, "called, name = {}, flags = {}", name, flags);
     if (flags != 0) {
         *sceNetErrnoLoc() = ORBIS_NET_EINVAL;
         return ORBIS_NET_ERROR_EINVAL;

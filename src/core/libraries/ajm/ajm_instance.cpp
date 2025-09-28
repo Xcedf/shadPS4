@@ -122,7 +122,7 @@ void AjmInstance::ExecuteJob(AjmJob& job) {
         while (!in_buf.empty() && !out_buf.IsEmpty() && !m_gapless.IsEnd()) {
             if (!HasEnoughSpace(out_buf)) {
                 if (job.output.p_mframe == nullptr || frames_decoded == 0) {
-                    LOG_WARNING(Lib_Ajm, "ORBIS_AJM_RESULT_NOT_ENOUGH_ROOM ({} < {})",
+                    LOG_DEBUG(Lib_Ajm, "ORBIS_AJM_RESULT_NOT_ENOUGH_ROOM ({} < {})",
                                 out_buf.Size(), m_codec->GetNextFrameSize(m_gapless));
                     job.output.p_result->result = ORBIS_AJM_RESULT_NOT_ENOUGH_ROOM;
                     break;
