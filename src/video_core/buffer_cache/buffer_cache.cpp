@@ -31,7 +31,7 @@ BufferCache::BufferCache(const Vulkan::Instance& instance_, Vulkan::Scheduler& s
       download_buffer{instance, scheduler, MemoryUsage::Download, DownloadBufferSize},
       device_buffer{instance, scheduler, MemoryUsage::DeviceLocal, DeviceBufferSize},
       gds_buffer{instance, scheduler, MemoryUsage::Stream, 0, AllFlags, DataShareBufferSize},
-      memory_tracker{&tracker} {
+      memory_tracker{tracker} {
     Vulkan::SetObjectName(instance.GetDevice(), gds_buffer.Handle(), "GDS Buffer");
 
     // Ensure the first slot is used for the null buffer
