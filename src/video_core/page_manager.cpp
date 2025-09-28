@@ -47,9 +47,11 @@ struct PageManager::Impl {
         u8 AddDelta() {
             if constexpr (delta == 1) {
                 return ++num_watchers;
-            } else {
+            } else if constexpr (delta == -1) {
                 ASSERT_MSG(num_watchers > 0, "Not enough watchers");
                 return --num_watchers;
+            } else {
+                return num_watchers;
             }
         }
     };
@@ -182,10 +184,8 @@ struct PageManager::Impl {
     }
 
 #endif
-    template <s32 delta>
+    template <bool track>
     void UpdatePageWatchers(VAddr addr, u64 size) {
-        std::scoped_lock lk(lock);
-
         size_t page = addr >> PAGE_BITS;
         auto perms = cached_pages[page].Perm();
         u64 range_begin = 0;
@@ -193,10 +193,13 @@ struct PageManager::Impl {
 
         const auto release_pending = [&] {
             if (range_bytes > 0) {
+                // Perform pending (un)protect action
                 Protect(range_begin << PAGE_BITS, range_bytes, perms);
                 range_bytes = 0;
             }
         };
+
+        std::scoped_lock lk(lock);
 
         // Iterate requested pages
         const u64 page_end = Common::DivCeil(addr + size, PAGE_SIZE);
@@ -210,26 +213,87 @@ struct PageManager::Impl {
             PageState& state = cached_pages[page];
 
             // Apply the change to the page state
-            const u8 new_count = state.AddDelta<delta>();
+            const u8 new_count = state.AddDelta<track ? 1 : -1>();
 
-            // If the protection changed flush pending (un)protect action
             if (auto new_perms = state.Perm(); new_perms != perms) [[unlikely]] {
+                // If the protection changed add pending (un)protect action
                 release_pending();
                 perms = new_perms;
+            } else if (range_bytes != 0) {
+                // If the protection did not change, extend the current range
+                range_bytes += PAGE_SIZE;
             }
 
-            // If the page must be (un)protected, add it to the pending range
-            if ((new_count == 0 && delta < 0) || (new_count == 1 && delta > 0)) {
-                if (range_bytes == 0) {
-                    range_begin = page;
-                }
-                range_bytes += PAGE_SIZE;
-            } else {
-                release_pending();
+            // Only start a new range if the page must be (un)protected
+            if (range_bytes == 0 && ((new_count == 0 && !track) || (new_count == 1 && track))) {
+                range_begin = page;
+                range_bytes = PAGE_SIZE;
             }
         }
 
-        // Flush pending (un)protect action
+        // Add pending (un)protect action
+        release_pending();
+    }
+
+    template <bool track>
+    void UpdatePageWatchersForRegion(VAddr base_addr, RegionBits& mask) {
+        auto start_range = mask.FirstRange();
+        auto end_range = mask.LastRange();
+
+        if (start_range.second == end_range.second) {
+            // Optimization: if all pages are contiguous, use the regular UpdatePageWatchers
+            const VAddr start_addr = base_addr + (start_range.first << PAGE_BITS);
+            const u64 size = (start_range.second - start_range.first) << PAGE_BITS;
+
+            UpdatePageWatchers<track>(start_addr, size);
+            return;
+        }
+
+        size_t base_page = (base_addr >> PAGE_BITS);
+        auto perms = cached_pages[base_page + start_range.first].Perm();
+        u64 range_begin = 0;
+        u64 range_bytes = 0;
+
+        const auto release_pending = [&] {
+            if (range_bytes > 0) {
+                // Perform pending (un)protect action
+                Protect((range_begin << PAGE_BITS), range_bytes, perms);
+                range_bytes = 0;
+            }
+        };
+
+        std::scoped_lock lk(lock);
+
+        // Iterate pages
+        for (size_t page = start_range.first; page < end_range.second; ++page) {
+            PageState& state = cached_pages[base_page + page];
+            const bool update = mask.Get(page);
+
+            // Apply the change to the page state
+            const u8 new_count = update ? state.AddDelta<track ? 1 : -1>() : state.AddDelta<0>();
+
+            if (auto new_perms = state.Perm(); new_perms != perms) [[unlikely]] {
+                // If the protection changed add pending (un)protect action
+                release_pending();
+                perms = new_perms;
+            } else if (range_bytes != 0) {
+                // If the protection did not change, extend the current range
+                range_bytes += PAGE_SIZE;
+            }
+
+            // If the page is not being updated, skip it
+            if (!update) {
+                continue;
+            }
+
+            // Only start a new range if the page must be (un)protected
+            if (range_bytes == 0 && ((new_count == 0 && !track) || (new_count == 1 && track))) {
+                range_begin = base_page + page;
+                range_bytes = PAGE_SIZE;
+            }
+        }
+
+        // Add pending (un)protect action
         release_pending();
     }
 
@@ -254,12 +318,21 @@ void PageManager::OnGpuUnmap(VAddr address, size_t size) {
     impl->OnUnmap(address, size);
 }
 
-template <s32 delta>
+template <bool track>
 void PageManager::UpdatePageWatchers(VAddr addr, u64 size) const {
-    impl->UpdatePageWatchers<delta>(addr, size);
+    impl->UpdatePageWatchers<track>(addr, size);
 }
 
-template void PageManager::UpdatePageWatchers<1>(VAddr addr, u64 size) const;
-template void PageManager::UpdatePageWatchers<-1>(VAddr addr, u64 size) const;
+template <bool track>
+void PageManager::UpdatePageWatchersForRegion(VAddr base_addr, RegionBits& mask) const {
+    impl->UpdatePageWatchersForRegion<track>(base_addr, mask);
+}
+
+template void PageManager::UpdatePageWatchers<true>(VAddr addr, u64 size) const;
+template void PageManager::UpdatePageWatchers<false>(VAddr addr, u64 size) const;
+template void PageManager::UpdatePageWatchersForRegion<true>(VAddr base_addr,
+                                                             RegionBits& mask) const;
+template void PageManager::UpdatePageWatchersForRegion<false>(VAddr base_addr,
+                                                              RegionBits& mask) const;
 
 } // namespace VideoCore

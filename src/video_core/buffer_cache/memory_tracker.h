@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 #include "common/types.h"
-#include "video_core/buffer_cache/word_manager.h"
+#include "video_core/buffer_cache/region_manager.h"
 
 namespace VideoCore {
 
