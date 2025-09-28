@@ -33,8 +33,10 @@ void Visit(Info& info, const IR::Inst& inst) {
         info.uses_patches |= 1U << IR::GenericPatchIndex(patch);
         break;
     }
+    case IR::Opcode::LoadSharedU16:
     case IR::Opcode::LoadSharedU32:
     case IR::Opcode::LoadSharedU64:
+    case IR::Opcode::WriteSharedU16:
     case IR::Opcode::WriteSharedU32:
     case IR::Opcode::WriteSharedU64:
         info.uses_shared = true;
@@ -83,7 +85,7 @@ void Visit(Info& info, const IR::Inst& inst) {
             info.buffers.push_back({
                 .used_types = IR::Type::U32,
                 .inline_cbuf = AmdGpu::Buffer::Null(),
-                .buffer_type = BufferType::ReadConstUbo,
+                .buffer_type = BufferType::Flatbuf,
             });
             info.has_readconst = true;
         }

@@ -41,7 +41,9 @@ constexpr u32 NUM_TEXTURE_TYPES = 7;
 
 enum class BufferType : u32 {
     Guest,
-    ReadConstUbo,
+    Flatbuf,
+    BdaPagetable,
+    FaultBuffer,
     GdsBuffer,
     SharedMemory,
 };

@@ -137,9 +137,14 @@ void EmitContext::DefineArithmeticTypes() {
 
     true_value = ConstantTrue(U1[1]);
     false_value = ConstantFalse(U1[1]);
+    u8_one_value = Constant(U8, 1U);
+    u8_zero_value = Constant(U8, 0U);
+    u16_zero_value = Constant(U16, 0U);
     u32_one_value = ConstU32(1U);
     u32_zero_value = ConstU32(0U);
     f32_zero_value = ConstF32(0.0f);
+    u64_one_value = Constant(U64, 1ULL);
+    u64_zero_value = Constant(U64, 0ULL);
 
     pi_x2 = ConstF32(2.0f * float{std::numbers::pi});
 
@@ -195,9 +200,10 @@ EmitContext::SpirvAttribute EmitContext::GetAttributeInfo(AmdGpu::NumberFormat f
 }
 
 Id EmitContext::GetBufferSize(const u32 sharp_idx) {
-    const auto& srt_flatbuf = buffers.back();
-    ASSERT(srt_flatbuf.buffer_type == BufferType::ReadConstUbo);
-    const auto [id, pointer_type] = srt_flatbuf[BufferAlias::U32];
+    // Can this be done with memory access? Like we do now with ReadConst
+    const auto& srt_flatbuf = buffers[flatbuf_index];
+    ASSERT(srt_flatbuf.buffer_type == BufferType::Flatbuf);
+    const auto [id, pointer_type] = srt_flatbuf[PointerType::U32];
 
     const auto rsrc1{
         OpLoad(U32[1], OpAccessChain(pointer_type, id, u32_zero_value, ConstU32(sharp_idx + 1)))};
@@ -244,6 +250,8 @@ void EmitContext::DefineBufferProperties() {
             Name(buffer.size_shorts, fmt::format("buf{}_short_size", binding));
             buffer.size_dwords = OpShiftRightLogical(U32[1], buffer.size, ConstU32(2U));
             Name(buffer.size_dwords, fmt::format("buf{}_dword_size", binding));
+            buffer.size_qwords = OpShiftRightLogical(U32[1], buffer.size, ConstU32(3U));
+            Name(buffer.size_qwords, fmt::format("buf{}_qword_size", binding));
         }
     }
 }
@@ -712,8 +720,14 @@ EmitContext::BufferSpv EmitContext::DefineBuffer(bool is_storage, bool is_writte
     case Shader::BufferType::GdsBuffer:
         Name(id, "gds_buffer");
         break;
-    case Shader::BufferType::ReadConstUbo:
-        Name(id, "srt_flatbuf_ubo");
+    case Shader::BufferType::Flatbuf:
+        Name(id, "srt_flatbuf");
+        break;
+    case Shader::BufferType::BdaPagetable:
+        Name(id, "bda_pagetable");
+        break;
+    case Shader::BufferType::FaultBuffer:
+        Name(id, "fault_buffer");
         break;
     case Shader::BufferType::SharedMemory:
         Name(id, "ssbo_shmem");
@@ -733,29 +747,42 @@ void EmitContext::DefineBuffers() {
         info.buffers.push_back({
             .used_types = IR::Type::U32,
             .inline_cbuf = AmdGpu::Buffer::Null(),
-            .buffer_type = BufferType::ReadConstUbo,
+            .buffer_type = BufferType::Flatbuf,
         });
     }
     for (const auto& desc : info.buffers) {
         const auto buf_sharp = desc.GetSharp(info);
         const bool is_storage = desc.IsStorage(buf_sharp, profile);
 
+        // Set indexes for special buffers.
+        if (desc.buffer_type == BufferType::Flatbuf) {
+            flatbuf_index = buffers.size();
+        } else if (desc.buffer_type == BufferType::BdaPagetable) {
+            bda_pagetable_index = buffers.size();
+        } else if (desc.buffer_type == BufferType::FaultBuffer) {
+            fault_buffer_index = buffers.size();
+        }
+
         // Define aliases depending on the shader usage.
         auto& spv_buffer = buffers.emplace_back(binding.buffer++, desc.buffer_type);
+        if (True(desc.used_types & IR::Type::U64)) {
+            spv_buffer[PointerType::U64] =
+                DefineBuffer(is_storage, desc.is_written, 3, desc.buffer_type, U64);
+        }
         if (True(desc.used_types & IR::Type::U32)) {
-            spv_buffer[BufferAlias::U32] =
+            spv_buffer[PointerType::U32] =
                 DefineBuffer(is_storage, desc.is_written, 2, desc.buffer_type, U32[1]);
         }
         if (True(desc.used_types & IR::Type::F32)) {
-            spv_buffer[BufferAlias::F32] =
+            spv_buffer[PointerType::F32] =
                 DefineBuffer(is_storage, desc.is_written, 2, desc.buffer_type, F32[1]);
         }
         if (True(desc.used_types & IR::Type::U16)) {
-            spv_buffer[BufferAlias::U16] =
+            spv_buffer[PointerType::U16] =
                 DefineBuffer(is_storage, desc.is_written, 1, desc.buffer_type, U16);
         }
         if (True(desc.used_types & IR::Type::U8)) {
-            spv_buffer[BufferAlias::U8] =
+            spv_buffer[PointerType::U8] =
                 DefineBuffer(is_storage, desc.is_written, 0, desc.buffer_type, U8);
         }
         ++binding.unified;
@@ -914,13 +941,27 @@ void EmitContext::DefineSharedMemory() {
     }
     ASSERT(info.stage == Stage::Compute);
     const u32 shared_memory_size = runtime_info.cs_info.shared_memory_size;
-    const u32 num_elements{Common::DivCeil(shared_memory_size, 4U)};
-    const Id type{TypeArray(U32[1], ConstU32(num_elements))};
-    shared_memory_u32_type = TypePointer(spv::StorageClass::Workgroup, type);
-    shared_u32 = TypePointer(spv::StorageClass::Workgroup, U32[1]);
-    shared_memory_u32 = AddGlobalVariable(shared_memory_u32_type, spv::StorageClass::Workgroup);
-    Name(shared_memory_u32, "shared_mem");
-    interfaces.push_back(shared_memory_u32);
+
+    const auto make_type = [&](Id element_type, u32 element_size) {
+        const u32 num_elements{Common::DivCeil(shared_memory_size, element_size)};
+        const Id array_type{TypeArray(element_type, ConstU32(num_elements))};
+        Decorate(array_type, spv::Decoration::ArrayStride, element_size);
+
+        const Id struct_type{TypeStruct(array_type)};
+        MemberDecorate(struct_type, 0u, spv::Decoration::Offset, 0u);
+        Decorate(struct_type, spv::Decoration::Block);
+
+        const Id pointer = TypePointer(spv::StorageClass::Workgroup, struct_type);
+        const Id element_pointer = TypePointer(spv::StorageClass::Workgroup, element_type);
+        const Id variable = AddGlobalVariable(pointer, spv::StorageClass::Workgroup);
+        Decorate(variable, spv::Decoration::Aliased);
+        interfaces.push_back(variable);
+
+        return std::make_tuple(variable, element_pointer, pointer);
+    };
+    std::tie(shared_memory_u16, shared_u16, shared_memory_u16_type) = make_type(U16, 2u);
+    std::tie(shared_memory_u32, shared_u32, shared_memory_u32_type) = make_type(U32[1], 4u);
+    std::tie(shared_memory_u64, shared_u64, shared_memory_u64_type) = make_type(U64, 8u);
 }
 
 Id EmitContext::DefineFloat32ToUfloatM5(u32 mantissa_bits, const std::string_view name) {
