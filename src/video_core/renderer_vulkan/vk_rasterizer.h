@@ -102,6 +102,7 @@ private:
     }
 
     bool IsComputeMetaClear(const Pipeline* pipeline);
+    bool IsComputeImageCopy(const Pipeline* pipeline);
 
 private:
     const Instance& instance;
