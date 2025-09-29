@@ -410,6 +410,10 @@ void setReadbacks(bool enable) {
     readbacksEnabled = enable;
 }
 
+void setReadbackLinearImages(bool enable) {
+    readbackLinearImagesEnabled = enable;
+}
+
 void setDumpShaders(bool enable) {
     shouldDumpShaders = enable;
 }
