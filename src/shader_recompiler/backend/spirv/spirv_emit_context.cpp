@@ -70,6 +70,8 @@ EmitContext::EmitContext(const Profile& profile_, const RuntimeInfo& runtime_inf
                          Bindings& binding_)
     : Sirit::Module(profile_.supported_spirv), info{info_}, runtime_info{runtime_info_},
       profile{profile_}, stage{info.stage}, l_stage{info.l_stage}, binding{binding_} {
+    String(fmt::format("{:#x}", info.pgm_hash));
+
     AddCapability(spv::Capability::Shader);
     DefineArithmeticTypes();
     DefineInterfaces();
