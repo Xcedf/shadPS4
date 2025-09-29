@@ -150,6 +150,10 @@ void CollectShaderInfoPass(IR::Program& program) {
             Visit(info, inst);
         }
     }
+
+    if (info.stores.GetAny(IR::Attribute::RenderTargetId)) {
+        info.has_layer_output = true;
+    }
 }
 
 } // namespace Shader::Optimization
