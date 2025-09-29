@@ -764,10 +764,6 @@ void EmitContext::DefineBuffers() {
         // Set indexes for special buffers.
         if (desc.buffer_type == BufferType::Flatbuf) {
             flatbuf_index = buffers.size();
-        } else if (desc.buffer_type == BufferType::BdaPagetable) {
-            bda_pagetable_index = buffers.size();
-        } else if (desc.buffer_type == BufferType::FaultBuffer) {
-            fault_buffer_index = buffers.size();
         }
 
         // Define aliases depending on the shader usage.
