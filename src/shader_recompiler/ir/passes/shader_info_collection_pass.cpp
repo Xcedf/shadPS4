@@ -151,8 +151,11 @@ void CollectShaderInfoPass(IR::Program& program) {
         }
     }
 
-    if (info.stores.GetAny(IR::Attribute::RenderTargetId)) {
+    if (info.stores.GetAny(IR::Attribute::RenderTargetIndex)) {
         info.has_layer_output = true;
+    }
+    if (info.stores.GetAny(IR::Attribute::ViewportIndex)) {
+        info.has_viewport_index_output = true;
     }
 }
 
