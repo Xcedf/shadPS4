@@ -33,6 +33,7 @@ enum ImageFlagBits : u32 {
     GpuModified = 1 << 3, ///< Contents have been modified from the GPU
     Registered = 1 << 6,  ///< True when the image is registered
     Picked = 1 << 7,      ///< Temporary flag to mark the image as picked
+    MetaRegistered = 1 << 8, ///< True when metadata for this surface is known and registered
 };
 DECLARE_ENUM_FLAG_OPERATORS(ImageFlagBits)
 

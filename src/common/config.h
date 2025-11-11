@@ -75,6 +75,8 @@ bool copyGPUCmdBuffers();
 void setCopyGPUCmdBuffers(bool enable, bool is_game_specific = false);
 bool readbacks();
 void setReadbacks(bool enable, bool is_game_specific = false);
+bool driveclubHack();
+void setDriveclubHack(bool enable, bool is_game_specific = false);
 bool readbackLinearImages();
 void setReadbackLinearImages(bool enable, bool is_game_specific = false);
 u32 readbackAccuracy();

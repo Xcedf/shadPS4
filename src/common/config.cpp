@@ -172,6 +172,7 @@ static ConfigEntry<u32> internalScreenHeight(720);
 static ConfigEntry<bool> isNullGpu(false);
 static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<bool> readbacksEnabled(false);
+static ConfigEntry<bool> dcHackEnabled(false);
 static ConfigEntry<u32> readbackAccuracyMode(static_cast<u32>(ReadbackAccuracy::High));
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
 static ConfigEntry<std::vector<u64>> skipedHashes(std::vector<u64>{});
@@ -441,6 +442,10 @@ bool readbacks() {
     return readbacksEnabled.get();
 }
 
+bool driveclubHack() {
+    return dcHackEnabled.get();
+}
+
 bool readbackLinearImages() {
     return readbackLinearImagesEnabled.get();
 }
@@ -582,6 +587,10 @@ void setReadbackAccuracy(u32 value, bool is_game_specific) {
 
 void setReadbacks(bool enable, bool is_game_specific) {
     readbacksEnabled.set(enable, is_game_specific);
+}
+
+void setDriveclubHack(bool enable, bool is_game_specific) {
+    dcHackEnabled.set(enable, is_game_specific);
 }
 
 void setReadbackLinearImages(bool enable, bool is_game_specific) {
@@ -926,6 +935,7 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         isNullGpu.setFromToml(gpu, "nullGpu", is_game_specific);
         shouldCopyGPUBuffers.setFromToml(gpu, "copyGPUBuffers", is_game_specific);
         readbacksEnabled.setFromToml(gpu, "readbacks", is_game_specific);
+        dcHackEnabled.setFromToml(gpu, "DriveClubHack", is_game_specific);
         readbackAccuracyMode.setFromToml(gpu, "readbackAccuracy", is_game_specific);
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
         skipedHashes.setFromToml(gpu, "skipShaders", is_game_specific);
@@ -1100,6 +1110,7 @@ void save(const std::filesystem::path& path, bool is_game_specific) {
     isNullGpu.setTomlValue(data, "GPU", "nullGpu", is_game_specific);
     shouldCopyGPUBuffers.setTomlValue(data, "GPU", "copyGPUBuffers", is_game_specific);
     readbacksEnabled.setTomlValue(data, "GPU", "readbacks", is_game_specific);
+    dcHackEnabled.setTomlValue(data, "GPU", "DriveClubHack", is_game_specific);
     readbackLinearImagesEnabled.setTomlValue(data, "GPU", "readbackLinearImages", is_game_specific);
     readbackAccuracyMode.setTomlValue(data, "GPU", "readbackAccuracy", is_game_specific);
     skipedHashes.setTomlValue(data, "GPU", "skipShaders", is_game_specific);
@@ -1197,6 +1208,7 @@ void setDefaultValues(bool is_game_specific) {
     // the global settings GUI
     if (is_game_specific) {
         readbacksEnabled.set(false, is_game_specific);
+        dcHackEnabled.set(false, is_game_specific);
         readbackLinearImagesEnabled.set(false, is_game_specific);
         isNeo.set(false, is_game_specific);
         isDevKit.set(false, is_game_specific);
