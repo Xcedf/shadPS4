@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "common/assert.h"
-#include "common/config.h"
 #include "shader_recompiler/backend/spirv/emit_spirv_bounds.h"
 #include "shader_recompiler/backend/spirv/emit_spirv_instructions.h"
 #include "shader_recompiler/backend/spirv/spirv_emit_context.h"
@@ -56,18 +55,19 @@ Id EmitGetUserData(EmitContext& ctx, IR::ScalarReg reg) {
     return ud_reg;
 }
 
-Id EmitReadConst(EmitContext& ctx, IR::Inst* inst, Id addr, Id offset) {
+using PointerType = EmitContext::PointerType;
+using PointerSize = EmitContext::PointerSize;
+
+Id EmitReadConst(EmitContext& ctx, IR::Inst* inst) {
     const u32 flatbuf_off_dw = inst->Flags<u32>();
-    if (!Config::directMemoryAccess()) {
-        return ctx.EmitFlatbufferLoad(ctx.ConstU32(flatbuf_off_dw));
-    }
-    // We can only provide a fallback for immediate offsets.
-    if (flatbuf_off_dw == 0) {
-        return ctx.OpFunctionCall(ctx.U32[1], ctx.read_const_dynamic, addr, offset);
-    } else {
-        return ctx.OpFunctionCall(ctx.U32[1], ctx.read_const, addr, offset,
-                                  ctx.ConstU32(flatbuf_off_dw));
-    }
+    const auto& srt_flatbuf = ctx.buffers.back();
+    ASSERT(srt_flatbuf.binding >= 0 && flatbuf_off_dw > 0 &&
+           srt_flatbuf.buffer_type == BufferType::Flatbuf);
+    LOG_DEBUG(Render_Recompiler, "ReadConst from flatbuf dword {}", flatbuf_off_dw);
+    const auto [id, pointer_type] = srt_flatbuf.Alias(PointerType::U32);
+    const Id ptr{
+        ctx.OpAccessChain(pointer_type, id, ctx.u32_zero_value, ctx.ConstU32(flatbuf_off_dw))};
+    return ctx.OpLoad(ctx.U32[1], ptr);
 }
 
 Id EmitReadConstBuffer(EmitContext& ctx, u32 handle, Id index) {

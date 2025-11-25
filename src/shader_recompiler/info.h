@@ -125,17 +125,10 @@ struct Info {
     bool stores_tess_level_outer{};
     bool stores_tess_level_inner{};
     bool translation_failed{};
+    bool has_readconst{};
     u8 mrt_mask{0u};
     bool has_fetch_shader{false};
     u32 fetch_shader_sgpr_base{0u};
-
-    enum class ReadConstType {
-        None = 0,
-        Immediate = 1 << 0,
-        Dynamic = 1 << 1,
-    };
-    ReadConstType readconst_types{};
-    bool uses_dma{};
 
     explicit Info(Stage stage_, LogicalStage l_stage_, ShaderParams params)
         : stage{stage_}, l_stage{l_stage_}, pgm_hash{params.hash}, pgm_base{params.Base()},
@@ -193,6 +186,5 @@ struct Info {
                sizeof(tess_constants));
     }
 };
-DECLARE_ENUM_FLAG_OPERATORS(Info::ReadConstType);
 
 } // namespace Shader

@@ -326,10 +326,6 @@ void SetupCapabilities(const Info& info, const Profile& profile, const RuntimeIn
                info.stores.GetAny(IR::Attribute::ViewportIndex)) {
         ctx.AddCapability(spv::Capability::MultiViewport);
     }
-    if (info.uses_dma) {
-        ctx.AddCapability(spv::Capability::PhysicalStorageBufferAddresses);
-        ctx.AddExtension("SPV_KHR_physical_storage_buffer");
-    }
     const auto shared_type_count = std::popcount(static_cast<u32>(info.shared_types));
     if (shared_type_count > 1 && profile.supports_workgroup_explicit_memory_layout) {
         ctx.AddExtension("SPV_KHR_workgroup_memory_explicit_layout");

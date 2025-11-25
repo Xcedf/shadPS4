@@ -370,11 +370,6 @@ public:
         return vk12_props;
     }
 
-    /// Returns the memory properties of the physical device.
-    const vk::PhysicalDeviceMemoryProperties& GetMemoryProperties() const noexcept {
-        return memory_properties;
-    }
-
     /// Returns true if shaders can declare the ClipDistance attribute
     bool IsShaderClipDistanceSupported() const {
         return features.shaderClipDistance;
@@ -452,7 +447,6 @@ private:
     vk::PhysicalDevice physical_device;
     vk::UniqueDevice device;
     vk::PhysicalDeviceProperties properties;
-    vk::PhysicalDeviceMemoryProperties memory_properties;
     vk::PhysicalDeviceVulkan11Properties vk11_props;
     vk::PhysicalDeviceVulkan12Properties vk12_props;
     vk::PhysicalDevicePushDescriptorPropertiesKHR push_descriptor_props;
