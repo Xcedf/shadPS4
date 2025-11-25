@@ -5,9 +5,6 @@
 
 #include <cstring>
 #include "common/types.h"
-#ifdef _WIN32
-#include <malloc.h>
-#endif
 
 namespace Xbyak {
 class CodeGenerator;

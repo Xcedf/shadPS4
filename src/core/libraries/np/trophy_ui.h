@@ -5,7 +5,6 @@
 
 #include <string>
 #include <variant>
-#include <SDL3_mixer/SDL_mixer.h>
 #include <queue>
 
 #include "common/fixed_value.h"
@@ -31,9 +30,6 @@ private:
     std::string_view trophy_type;
     ImGui::RefCountedTexture trophy_icon;
     ImGui::RefCountedTexture trophy_type_icon;
-
-    MIX_Mixer* mixer;
-    MIX_Audio* audio;
 };
 
 struct TrophyInfo {
