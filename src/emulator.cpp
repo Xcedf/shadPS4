@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 #include <fmt/xchar.h>
 #include <hwinfo/hwinfo.h>
+#include <magic_enum/magic_enum.hpp>
 
 #include "common/config.h"
 #include "common/debug.h"
@@ -210,6 +211,7 @@ void Emulator::Run(std::filesystem::path file, std::vector<std::string> args,
     LOG_INFO(Config, "GPU isNullGpu: {}", Config::nullGpu());
     LOG_INFO(Config, "GPU readbacks: {}", Config::readbacks());
     LOG_INFO(Config, "GPU readbackLinearImages: {}", Config::readbackLinearImages());
+    LOG_INFO(Config, "GPU readbackAccuracy: {}", Config::readbackAccuracy());
     LOG_INFO(Config, "GPU shouldDumpShaders: {}", Config::dumpShaders());
     LOG_INFO(Config, "GPU vblankFrequency: {}", Config::vblankFreq());
     LOG_INFO(Config, "GPU shouldCopyGPUBuffers: {}", Config::copyGPUCmdBuffers());

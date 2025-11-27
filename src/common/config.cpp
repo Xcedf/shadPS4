@@ -168,6 +168,7 @@ static ConfigEntry<u32> internalScreenHeight(720);
 static ConfigEntry<bool> isNullGpu(false);
 static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<bool> readbacksEnabled(false);
+static ConfigEntry<u32> readbackAccuracyMode(static_cast<u32>(ReadbackAccuracy::High));
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
 static ConfigEntry<bool> shouldDumpShaders(false);
 static ConfigEntry<bool> shouldPatchShaders(false);
@@ -427,6 +428,10 @@ bool copyGPUCmdBuffers() {
     return shouldCopyGPUBuffers.get();
 }
 
+u32 readbackAccuracy() {
+    return readbackAccuracyMode.get();
+}
+
 bool readbacks() {
     return readbacksEnabled.get();
 }
@@ -560,6 +565,10 @@ void setAllowHDR(bool enable, bool is_game_specific) {
 
 void setCopyGPUCmdBuffers(bool enable, bool is_game_specific) {
     shouldCopyGPUBuffers.set(enable, is_game_specific);
+}
+
+void setReadbackAccuracy(u32 value, bool is_game_specific) {
+    readbackAccuracyMode.set(value, is_game_specific);
 }
 
 void setReadbacks(bool enable, bool is_game_specific) {
@@ -904,6 +913,7 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         isNullGpu.setFromToml(gpu, "nullGpu", is_game_specific);
         shouldCopyGPUBuffers.setFromToml(gpu, "copyGPUBuffers", is_game_specific);
         readbacksEnabled.setFromToml(gpu, "readbacks", is_game_specific);
+        readbackAccuracyMode.setFromToml(gpu, "readbackAccuracy", is_game_specific);
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
         shouldDumpShaders.setFromToml(gpu, "dumpShaders", is_game_specific);
         shouldPatchShaders.setFromToml(gpu, "patchShaders", is_game_specific);
@@ -1077,6 +1087,7 @@ void save(const std::filesystem::path& path, bool is_game_specific) {
     shouldCopyGPUBuffers.setTomlValue(data, "GPU", "copyGPUBuffers", is_game_specific);
     readbacksEnabled.setTomlValue(data, "GPU", "readbacks", is_game_specific);
     readbackLinearImagesEnabled.setTomlValue(data, "GPU", "readbackLinearImages", is_game_specific);
+    readbackAccuracyMode.setTomlValue(data, "GPU", "readbackAccuracy", is_game_specific);
     shouldDumpShaders.setTomlValue(data, "GPU", "dumpShaders", is_game_specific);
     vblankFrequency.setTomlValue(data, "GPU", "vblankFrequency", is_game_specific);
     isFullscreen.setTomlValue(data, "GPU", "Fullscreen", is_game_specific);

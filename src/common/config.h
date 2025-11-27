@@ -5,7 +5,7 @@
 
 #include <filesystem>
 #include <vector>
-#include "types.h"
+#include "common/types.h"
 
 namespace Config {
 
@@ -21,7 +21,17 @@ struct GameInstallDir {
     bool enabled;
 };
 
-enum HideCursorState : int { Never, Idle, Always };
+enum HideCursorState : u32 {
+    Never,
+    Idle,
+    Always,
+};
+
+enum class ReadbackAccuracy : u32 {
+    Low,
+    High,
+    Extreme,
+};
 
 void load(const std::filesystem::path& path, bool is_game_specific = false);
 void save(const std::filesystem::path& path, bool is_game_specific = false);
@@ -67,6 +77,8 @@ bool readbacks();
 void setReadbacks(bool enable, bool is_game_specific = false);
 bool readbackLinearImages();
 void setReadbackLinearImages(bool enable, bool is_game_specific = false);
+u32 readbackAccuracy();
+void setReadbackAccuracy(u32 value, bool is_game_specific = false);
 bool dumpShaders();
 void setDumpShaders(bool enable, bool is_game_specific = false);
 u32 vblankFreq();
