@@ -73,7 +73,7 @@ struct InfoPersistent {
     u8 mrt_mask{};
     bool has_fetch_shader{};
     bool has_bitwise_xor{};
-    bool uses_dma{};
+    bool has_readconst{};
 
     InfoPersistent() = default;
     InfoPersistent(Stage stage_, LogicalStage l_stage_, u64 pgm_hash_)
@@ -105,12 +105,6 @@ struct Info : InfoPersistent {
         std::array<u8, IR::NumAttributes> flags;
     };
 
-    enum class ReadConstType {
-        None = 0,
-        Immediate = 1 << 0,
-        Dynamic = 1 << 1,
-    };
-
     struct Interpolation {
         Qualifier primary;
         Qualifier auxiliary;
@@ -123,7 +117,6 @@ struct Info : InfoPersistent {
     AttributeFlags loads{};
     AttributeFlags stores{};
 
-    ReadConstType readconst_types{};
     CopyShaderData gs_copy_data;
     u32 uses_patches{};
 
@@ -210,6 +203,5 @@ struct Info : InfoPersistent {
     void Serialize(Serialization::Archive& ar) const;
     bool Deserialize(Serialization::Archive& ar);
 };
-DECLARE_ENUM_FLAG_OPERATORS(Info::ReadConstType);
 
 } // namespace Shader

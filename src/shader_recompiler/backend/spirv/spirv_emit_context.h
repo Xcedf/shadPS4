@@ -144,50 +144,12 @@ public:
         return last_label;
     }
 
-    Id EmitDwordMemoryRead(Id address, auto&& fallback) {
-        const Id available_label = OpLabel();
-        const Id fallback_label = OpLabel();
-        const Id merge_label = OpLabel();
-
-        const Id addr = OpFunctionCall(U64, get_bda_pointer, address);
-        const Id is_available = OpINotEqual(U1[1], addr, u64_zero_value);
-        OpSelectionMerge(merge_label, spv::SelectionControlMask::MaskNone);
-        OpBranchConditional(is_available, available_label, fallback_label);
-
-        // Available
-        AddLabel(available_label);
-        const Id addr_ptr = OpConvertUToPtr(physical_pointer_type_u32, addr);
-        const Id result = OpLoad(U32[1], addr_ptr, spv::MemoryAccessMask::Aligned, 4u);
-        OpBranch(merge_label);
-
-        // Fallback
-        AddLabel(fallback_label);
-        const Id fallback_result = fallback();
-        OpBranch(merge_label);
-
-        // Merge
-        AddLabel(merge_label);
-        const Id final_result =
-            OpPhi(U32[1], fallback_result, fallback_label, result, available_label);
-        return final_result;
-    }
-
     Id EmitSharedMemoryAccess(const Id result_type, const Id shared_mem, const Id index) {
         if (std::popcount(static_cast<u32>(info.shared_types)) > 1) {
             return OpAccessChain(result_type, shared_mem, u32_zero_value, index);
         }
         // Workgroup layout struct omitted.
         return OpAccessChain(result_type, shared_mem, index);
-    }
-
-    Id EmitFlatbufferLoad(Id flatbuf_offset) {
-        const auto& flatbuf_buffer{buffers[flatbuf_index]};
-        ASSERT(flatbuf_buffer.binding >= 0 && flatbuf_buffer.buffer_type == BufferType::Flatbuf);
-        const auto [flatbuf_buffer_id, flatbuf_pointer_type] =
-            flatbuf_buffer.aliases[u32(PointerType::U32)];
-        const auto ptr{
-            OpAccessChain(flatbuf_pointer_type, flatbuf_buffer_id, u32_zero_value, flatbuf_offset)};
-        return OpLoad(U32[1], ptr);
     }
 
     Info& info;
@@ -354,8 +316,8 @@ public:
     std::unordered_map<u32, Id> first_to_last_label_map;
 
     size_t flatbuf_index{};
-    size_t bda_pagetable_index{};
-    size_t fault_buffer_index{};
+    //size_t bda_pagetable_index{};
+    //size_t fault_buffer_index{};
     Id physical_pointer_type_u32;
 
     Id sampler_type{};
@@ -386,9 +348,6 @@ public:
 
     Id get_bda_pointer{};
 
-    Id read_const{};
-    Id read_const_dynamic{};
-
 private:
     void DefineArithmeticTypes();
     void DefineInterfaces();
@@ -409,10 +368,6 @@ private:
 
     Id DefineFloat32ToUfloatM5(u32 mantissa_bits, std::string_view name);
     Id DefineUfloatM5ToFloat32(u32 mantissa_bits, std::string_view name);
-
-    Id DefineGetBdaPointer();
-
-    Id DefineReadConst(bool dynamic);
 
     Id GetBufferSize(u32 sharp_idx);
 };

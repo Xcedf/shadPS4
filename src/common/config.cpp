@@ -173,7 +173,6 @@ static ConfigEntry<bool> isNullGpu(false);
 static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<bool> readbacksEnabled(false);
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
-static ConfigEntry<bool> directMemoryAccessEnabled(false);
 static ConfigEntry<bool> shouldDumpShaders(false);
 static ConfigEntry<bool> shouldPatchShaders(false);
 static ConfigEntry<u32> vblankFrequency(60);
@@ -443,10 +442,6 @@ bool readbackLinearImages() {
     return readbackLinearImagesEnabled.get();
 }
 
-bool directMemoryAccess() {
-    return directMemoryAccessEnabled.get();
-}
-
 bool dumpShaders() {
     return shouldDumpShaders.get();
 }
@@ -592,10 +587,6 @@ void setReadbacks(bool enable, bool is_game_specific) {
 
 void setReadbackLinearImages(bool enable, bool is_game_specific) {
     readbackLinearImagesEnabled.set(enable, is_game_specific);
-}
-
-void setDirectMemoryAccess(bool enable, bool is_game_specific) {
-    directMemoryAccessEnabled.set(enable, is_game_specific);
 }
 
 void setDumpShaders(bool enable, bool is_game_specific) {
@@ -935,7 +926,6 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         shouldCopyGPUBuffers.setFromToml(gpu, "copyGPUBuffers", is_game_specific);
         readbacksEnabled.setFromToml(gpu, "readbacks", is_game_specific);
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
-        directMemoryAccessEnabled.setFromToml(gpu, "directMemoryAccess", is_game_specific);
         shouldDumpShaders.setFromToml(gpu, "dumpShaders", is_game_specific);
         shouldPatchShaders.setFromToml(gpu, "patchShaders", is_game_specific);
         vblankFrequency.setFromToml(gpu, "vblankFrequency", is_game_specific);
@@ -1119,7 +1109,6 @@ void save(const std::filesystem::path& path, bool is_game_specific) {
     fsrEnabled.setTomlValue(data, "GPU", "fsrEnabled", is_game_specific);
     rcasEnabled.setTomlValue(data, "GPU", "rcasEnabled", is_game_specific);
     rcasAttenuation.setTomlValue(data, "GPU", "rcasAttenuation", is_game_specific);
-    directMemoryAccessEnabled.setTomlValue(data, "GPU", "directMemoryAccess", is_game_specific);
 
     gpuId.setTomlValue(data, "Vulkan", "gpuId", is_game_specific);
     vkValidation.setTomlValue(data, "Vulkan", "validation", is_game_specific);
@@ -1213,7 +1202,6 @@ void setDefaultValues(bool is_game_specific) {
         isDevKit.set(false, is_game_specific);
         isPSNSignedIn.set(false, is_game_specific);
         isConnectedToNetwork.set(false, is_game_specific);
-        directMemoryAccessEnabled.set(false, is_game_specific);
         extraDmemInMbytes.set(0, is_game_specific);
     }
 

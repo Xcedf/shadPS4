@@ -5,6 +5,7 @@
 
 #include <shared_mutex>
 #include <boost/container/small_vector.hpp>
+#include "common/div_ceil.h"
 #include "common/lru_cache.h"
 #include "common/slot_vector.h"
 #include "common/types.h"
@@ -36,13 +37,9 @@ class PageManager;
 
 class BufferCache {
 public:
-    static constexpr u32 CACHING_PAGEBITS = 14;
+    static constexpr u32 CACHING_PAGEBITS = 12;
     static constexpr u64 CACHING_PAGESIZE = u64{1} << CACHING_PAGEBITS;
-    static constexpr u64 DEVICE_PAGESIZE = 16_KB;
-    static constexpr u64 CACHING_NUMPAGES = u64{1} << (40 - CACHING_PAGEBITS);
-
-    static constexpr u64 BDA_PAGETABLE_SIZE = CACHING_NUMPAGES * sizeof(vk::DeviceAddress);
-    static constexpr u64 FAULT_BUFFER_SIZE = CACHING_NUMPAGES / 8; // Bit per page
+    static constexpr u64 DEVICE_PAGESIZE = 4_KB;
 
     // Default values for garbage collection
     static constexpr s64 DEFAULT_TRIGGER_GC_MEMORY = 1_GB;
@@ -56,7 +53,7 @@ public:
     struct Traits {
         using Entry = PageData;
         static constexpr size_t AddressSpaceBits = 40;
-        static constexpr size_t FirstLevelBits = 16;
+        static constexpr size_t FirstLevelBits = 14;
         static constexpr size_t PageBits = CACHING_PAGEBITS;
     };
     using PageTable = MultiLevelPageTable<Traits>;
@@ -83,16 +80,6 @@ public:
     /// Returns a pointer to GDS device local buffer.
     [[nodiscard]] const Buffer* GetGdsBuffer() const noexcept {
         return &gds_buffer;
-    }
-
-    /// Retrieves the device local DBA page table buffer.
-    [[nodiscard]] Buffer* GetBdaPageTableBuffer() noexcept {
-        return &bda_pagetable_buffer;
-    }
-
-    /// Retrieves the fault buffer.
-    [[nodiscard]] Buffer* GetFaultBuffer() noexcept {
-        return &fault_buffer;
     }
 
     /// Retrieves the buffer with the specified id.
@@ -151,29 +138,25 @@ public:
     /// Return buffer id for the specified region
     BufferId FindBuffer(VAddr device_addr, u32 size);
 
-    /// Processes the fault buffer.
-    void ProcessFaultBuffer();
-
-    /// Synchronizes all buffers in the specified range.
-    void SynchronizeBuffersInRange(VAddr device_addr, u64 size);
-
-    /// Synchronizes all buffers neede for DMA.
-    void SynchronizeDmaBuffers();
-
-    /// Record memory barrier. Used for buffers when accessed via BDA.
-    void MemoryBarrier();
-
     /// Runs the garbage collector.
     void RunGarbageCollector();
 
 private:
     template <typename Func>
     void ForEachBufferInRange(VAddr device_addr, u64 size, Func&& func) {
-        buffer_ranges.ForEachInRange(device_addr, size,
-                                     [&](u64 page_start, u64 page_end, BufferId id) {
-                                         Buffer& buffer = slot_buffers[id];
-                                         func(id, buffer);
-                                     });
+        const u64 page_end = Common::DivCeil(device_addr + size, CACHING_PAGESIZE);
+        for (u64 page = device_addr >> CACHING_PAGEBITS; page < page_end;) {
+            const BufferId buffer_id = page_table[page].buffer_id;
+            if (!buffer_id) {
+                ++page;
+                continue;
+            }
+            Buffer& buffer = slot_buffers[buffer_id];
+            func(buffer_id, buffer);
+
+            const VAddr end_addr = buffer.CpuAddr() + buffer.SizeBytes();
+            page = Common::DivCeil(end_addr, CACHING_PAGESIZE);
+        }
     }
 
     inline bool IsBufferInvalid(BufferId buffer_id) const {
@@ -221,9 +204,7 @@ private:
     StreamBuffer download_buffer;
     StreamBuffer device_buffer;
     Buffer gds_buffer;
-    Buffer bda_pagetable_buffer;
-    Buffer fault_buffer;
-    std::shared_mutex slot_buffers_mutex;
+    std::shared_mutex mutex;
     Common::SlotVector<Buffer> slot_buffers;
     u64 total_used_memory = 0;
     u64 trigger_gc_memory = 0;
@@ -231,11 +212,7 @@ private:
     u64 gc_tick = 0;
     Common::LeastRecentlyUsedCache<BufferId, u64> lru_cache;
     RangeSet gpu_modified_ranges;
-    SplitRangeMap<BufferId> buffer_ranges;
     PageTable page_table;
-    vk::UniqueDescriptorSetLayout fault_process_desc_layout;
-    vk::UniquePipeline fault_process_pipeline;
-    vk::UniquePipelineLayout fault_process_pipeline_layout;
 };
 
 } // namespace VideoCore

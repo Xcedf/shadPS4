@@ -21,6 +21,6 @@ struct Program {
     Info& info;
 };
 
-void DumpProgram(const Program& program, const Info& info, const std::string& type = "");
+[[nodiscard]] std::string DumpProgram(const Program& program);
 
 } // namespace Shader::IR

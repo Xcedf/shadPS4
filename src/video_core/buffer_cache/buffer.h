@@ -68,7 +68,6 @@ struct UniqueBuffer {
     VmaAllocator allocator;
     VmaAllocation allocation;
     vk::Buffer buffer{};
-    vk::DeviceAddress bda_addr = 0;
 };
 
 class Buffer {
@@ -119,12 +118,7 @@ public:
         return buffer;
     }
 
-    vk::DeviceAddress BufferDeviceAddress() const noexcept {
-        ASSERT_MSG(buffer.bda_addr != 0, "Can't get BDA from a non BDA buffer");
-        return buffer.bda_addr;
-    }
-
-    std::optional<vk::BufferMemoryBarrier2> GetBarrier(vk::AccessFlags2 dst_acess_mask,
+    std::optional<vk::BufferMemoryBarrier2> GetBarrier(vk::Flags<vk::AccessFlagBits2> dst_acess_mask, 
                                                        vk::PipelineStageFlagBits2 dst_stage,
                                                        u32 offset = 0) {
         if (dst_acess_mask == access_mask && stage == dst_stage) {

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "common/recursive_lock.h"
 #include "common/shared_first_mutex.h"
 #include "video_core/buffer_cache/buffer_cache.h"
 #include "video_core/page_manager.h"
@@ -73,15 +72,6 @@ public:
         return pipeline_cache;
     }
 
-    template <typename Func>
-    void ForEachMappedRangeInRange(VAddr addr, u64 size, Func&& func) {
-        const auto range = decltype(mapped_ranges)::interval_type::right_open(addr, addr + size);
-        Common::RecursiveSharedLock lock{mapped_ranges_mutex};
-        for (const auto& mapped_range : (mapped_ranges & range)) {
-            func(mapped_range);
-        }
-    }
-
 private:
     void PrepareRenderState(const GraphicsPipeline* pipeline);
     RenderState BeginRendering(const GraphicsPipeline* pipeline);
@@ -115,8 +105,6 @@ private:
     bool IsComputeImageClear(const Pipeline* pipeline);
 
 private:
-    friend class VideoCore::BufferCache;
-
     const Instance& instance;
     Scheduler& scheduler;
     VideoCore::PageManager page_manager;
@@ -143,7 +131,6 @@ private:
     boost::container::static_vector<BufferBindingInfo, Shader::NUM_BUFFERS> buffer_bindings;
     using ImageBindingInfo = std::pair<VideoCore::ImageId, VideoCore::TextureCache::ImageDesc>;
     boost::container::static_vector<ImageBindingInfo, Shader::NUM_IMAGES> image_bindings;
-    bool fault_process_pending{};
     bool attachment_feedback_loop{};
 };
 
