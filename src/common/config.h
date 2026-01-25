@@ -67,6 +67,8 @@ bool readbacks();
 void setReadbacks(bool enable, bool is_game_specific = false);
 bool readbackLinearImages();
 void setReadbackLinearImages(bool enable, bool is_game_specific = false);
+std::vector<u64> hashesToSkip();
+void setHashesToSkip(const std::vector<u64>& vec, bool is_game_specific = false);
 bool dumpShaders();
 void setDumpShaders(bool enable, bool is_game_specific = false);
 u32 vblankFreq();

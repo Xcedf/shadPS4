@@ -10,6 +10,7 @@
 #include <boost/pool/pool.hpp>
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/pool/poolfwd.hpp>
+#include <shared_mutex>
 #include "common/types.h"
 
 namespace VideoCore {
@@ -134,35 +135,41 @@ public:
     RangeMap& operator=(RangeMap&& other);
 
     void Add(VAddr base_address, size_t size, const T& value) {
+        std::scoped_lock lk{mutex};
         const VAddr end_address = base_address + size;
         IntervalType interval{base_address, end_address};
         m_ranges_map.add({interval, value});
     }
 
     void Subtract(VAddr base_address, size_t size) {
+        std::scoped_lock lk{mutex};
         const VAddr end_address = base_address + size;
         IntervalType interval{base_address, end_address};
         m_ranges_map -= interval;
     }
 
     void Clear() {
+        std::scoped_lock lk{mutex};
         m_ranges_map.clear();
     }
 
-    bool Contains(VAddr base_address, size_t size) const {
+    bool Contains(VAddr base_address, size_t size) {
+        std::scoped_lock lk{mutex};
         const VAddr end_address = base_address + size;
         IntervalType interval{base_address, end_address};
         return boost::icl::contains(m_ranges_map, interval);
     }
 
-    bool Intersects(VAddr base_address, size_t size) const {
+    bool Intersects(VAddr base_address, size_t size) {
+        std::scoped_lock lk{mutex};
         const VAddr end_address = base_address + size;
         IntervalType interval{base_address, end_address};
         return boost::icl::intersects(m_ranges_map, interval);
     }
 
     template <typename Func>
-    void ForEach(Func&& func) const {
+    void ForEach(Func&& func) {
+        std::scoped_lock lk{mutex};
         if (m_ranges_map.empty()) {
             return;
         }
@@ -175,7 +182,8 @@ public:
     }
 
     template <typename Func>
-    void ForEachInRange(VAddr base_addr, size_t size, Func&& func) const {
+    void ForEachInRange(VAddr base_addr, size_t size, Func&& func) {
+        std::scoped_lock lk{mutex};
         if (m_ranges_map.empty()) {
             return;
         }
@@ -201,7 +209,8 @@ public:
     }
 
     template <typename Func>
-    void ForEachNotInRange(VAddr base_addr, size_t size, Func&& func) const {
+    void ForEachNotInRange(VAddr base_addr, size_t size, Func&& func) {
+        std::scoped_lock lk{mutex};
         const VAddr end_addr = base_addr + size;
         ForEachInRange(base_addr, size, [&](VAddr range_addr, VAddr range_end, const T&) {
             if (size_t gap_size = range_addr - base_addr; gap_size != 0) {
@@ -215,6 +224,7 @@ public:
     }
 
 private:
+    std::shared_mutex mutex;
     IntervalMap m_ranges_map;
 };
 

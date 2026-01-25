@@ -15,6 +15,8 @@
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/texture_cache/texture_cache.h"
+#include "stream_memcpy.h"
+#include <chrono>
 
 namespace VideoCore {
 
@@ -74,20 +76,45 @@ void BufferCache::InvalidateMemory(VAddr device_addr, u64 size) {
     if (!IsRegionRegistered(device_addr, size)) {
         return;
     }
-    memory_tracker->InvalidateRegion(
-        device_addr, size, [this, device_addr, size] { ReadMemory(device_addr, size, true); });
+    if (Config::readbacks()) {
+        memory_tracker->InvalidateRegion(
+            device_addr, size, [this](VAddr addr, u64 size) { ReadMemory(addr, size, true); });
+    } else {
+        memory_tracker->MarkRegionAsCpuModified(device_addr, size);
+    }
 }
 
 void BufferCache::ReadMemory(VAddr device_addr, u64 size, bool is_write) {
     liverpool->SendCommand<true>([this, device_addr, size, is_write] {
-        Buffer& buffer = slot_buffers[FindBuffer(device_addr, size)];
-        DownloadBufferMemory<false>(buffer, device_addr, size, is_write);
+        std::vector<u8> buf;
+        memory_tracker->ForEachDownloadRange<false>(
+            device_addr, size, [&](u64 device_addr_out, u64 range_size) {
+                gpu_modified_ranges.ForEachInRange(device_addr_out, range_size,
+                                                   [&](VAddr start, VAddr end, u64 tick) {
+                    const u64 size = end - start;
+                    auto buffer_id = page_table[start >> CACHING_PAGEBITS].buffer_id;
+                    auto& buffer = slot_buffers[buffer_id];
+                    const auto st = std::chrono::high_resolution_clock::now();
+                    scheduler.Wait(tick);
+                    const auto en = std::chrono::high_resolution_clock::now();
+                    ms_waited += std::chrono::duration_cast<std::chrono::microseconds>(en - st).count();
+                    const u64 cache_aligned_start = Common::AlignDown(start, 16);
+                    const u64 cache_aligned_end = Common::AlignUp(end, 16);
+                    const u64 cache_aligned_size = cache_aligned_end - cache_aligned_start;
+                    buf.resize(cache_aligned_size);
+                    //ASSERT(buffer.IsInBounds(cache_aligned_start, cache_aligned_end - cache_aligned_start));
+                    util_streaming_load_memcpy(buf.data(), buffer.mapped_data.data() + buffer.Offset(cache_aligned_start), cache_aligned_size);
+                    memory->TryWriteBacking(reinterpret_cast<void*>(start), buf.data() + (start - cache_aligned_start), size);
+                });
+                gpu_modified_ranges.Subtract(device_addr_out, range_size);
+        });
+        memory_tracker->UnmarkRegionAsGpuModified(device_addr, size, is_write);
     });
 }
 
 template <bool async>
 void BufferCache::DownloadBufferMemory(Buffer& buffer, VAddr device_addr, u64 size, bool is_write) {
-    boost::container::small_vector<vk::BufferCopy, 1> copies;
+    /*boost::container::small_vector<vk::BufferCopy, 1> copies;
     u64 total_size_bytes = 0;
     memory_tracker->ForEachDownloadRange<false>(
         device_addr, size, [&](u64 device_addr_out, u64 range_size) {
@@ -138,7 +165,7 @@ void BufferCache::DownloadBufferMemory(Buffer& buffer, VAddr device_addr, u64 si
     } else {
         scheduler.Finish();
         write_data();
-    }
+    }*/
 }
 
 void BufferCache::BindVertexBuffers(const Vulkan::GraphicsPipeline& pipeline) {
@@ -306,7 +333,7 @@ void BufferCache::CopyBuffer(VAddr dst, VAddr src, u32 num_bytes, bool dst_gds, 
         const auto buffer_id = FindBuffer(dst, num_bytes);
         auto& buffer = slot_buffers[buffer_id];
         SynchronizeBuffer(buffer, dst, num_bytes, true, true);
-        gpu_modified_ranges.Add(dst, num_bytes);
+        gpu_modified_ranges.Add(dst, num_bytes, scheduler.CurrentTick());
         return buffer;
     }();
     const vk::BufferCopy region = {
@@ -382,7 +409,7 @@ std::pair<Buffer*, u32> BufferCache::ObtainBuffer(VAddr device_addr, u32 size, b
     Buffer& buffer = slot_buffers[buffer_id];
     SynchronizeBuffer(buffer, device_addr, size, is_written, is_texel_buffer);
     if (is_written) {
-        gpu_modified_ranges.Add(device_addr, size);
+        gpu_modified_ranges.Add(device_addr, size, scheduler.CurrentTick());
     }
     return {&buffer, buffer.Offset(device_addr)};
 }
@@ -589,7 +616,7 @@ BufferId BufferCache::CreateBuffer(VAddr device_addr, u32 wanted_size) {
     const u32 size = static_cast<u32>(overlap.end - overlap.begin);
     const BufferId new_buffer_id = [&] {
         std::scoped_lock lk{mutex};
-        return slot_buffers.insert(instance, scheduler, MemoryUsage::DeviceLocal, overlap.begin,
+        return slot_buffers.insert(instance, scheduler, MemoryUsage::Stream, overlap.begin,
                                    AllFlags, size);
     }();
     auto& new_buffer = slot_buffers[new_buffer_id];
@@ -820,6 +847,7 @@ void BufferCache::WriteDataBuffer(Buffer& buffer, VAddr address, const void* val
 }
 
 void BufferCache::RunGarbageCollector() {
+    ms_waited = 0;
     SCOPE_EXIT {
         ++gc_tick;
     };

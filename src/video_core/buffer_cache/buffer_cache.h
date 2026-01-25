@@ -211,8 +211,9 @@ private:
     u64 critical_gc_memory = 0;
     u64 gc_tick = 0;
     Common::LeastRecentlyUsedCache<BufferId, u64> lru_cache;
-    RangeSet gpu_modified_ranges;
+    RangeMap<u64> gpu_modified_ranges;
     PageTable page_table;
+    u64 ms_waited{};
 };
 
 } // namespace VideoCore
