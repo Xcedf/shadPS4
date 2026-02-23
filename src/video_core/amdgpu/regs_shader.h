@@ -228,6 +228,12 @@ static constexpr const BinaryInfo& SearchBinaryInfo(const u32* code) {
     UNREACHABLE_MSG("Shader binary info not found.");
 }
 
+template <typename Shader>
+static constexpr const BinaryInfo& GetBinaryInfo(const Shader& sh) {
+    const auto* code = sh.template Address<u32*>();
+    return SearchBinaryInfo(code);
+}
+
 static constexpr Shader::ShaderParams GetParams(const auto& sh) {
     const auto* code = sh.template Address<u32*>();
     const auto& bininfo = SearchBinaryInfo(code);

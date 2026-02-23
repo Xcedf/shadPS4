@@ -67,6 +67,10 @@ std::optional<T> get_optional(const toml::value& v, const std::string& key) {
         if (it->second.is_boolean()) {
             return toml::get<bool>(it->second);
         }
+    } else if constexpr (std::is_same_v<T, std::vector<u64>>) {
+        if (it->second.is_array()) {
+            return toml::get<std::vector<u64>>(it->second);
+        }
     } else {
         static_assert([] { return false; }(), "Unsupported type in get_optional<T>");
     }
@@ -175,6 +179,7 @@ static ConfigEntry<bool> shouldCopyGPUBuffers(false);
 static ConfigEntry<int> readbacksMode(GpuReadbacksMode::Disabled);
 static ConfigEntry<bool> readbackLinearImagesEnabled(false);
 static ConfigEntry<bool> directMemoryAccessEnabled(false);
+static ConfigEntry<std::vector<u64>> skipedHashes(std::vector<u64>{});
 static ConfigEntry<bool> shouldDumpShaders(false);
 static ConfigEntry<bool> shouldPatchShaders(false);
 static ConfigEntry<u32> vblankFrequency(60);
@@ -452,6 +457,10 @@ bool directMemoryAccess() {
     return directMemoryAccessEnabled.get();
 }
 
+std::vector<u64> hashesToSkip() {
+    return skipedHashes.get();
+}
+
 bool dumpShaders() {
     return shouldDumpShaders.get();
 }
@@ -601,6 +610,10 @@ void setReadbackLinearImages(bool enable, bool is_game_specific) {
 
 void setDirectMemoryAccess(bool enable, bool is_game_specific) {
     directMemoryAccessEnabled.set(enable, is_game_specific);
+}
+
+void setHashesToSkip(const std::vector<u64>& vec, bool is_game_specific) {
+    skipedHashes.set(vec, is_game_specific);
 }
 
 void setDumpShaders(bool enable, bool is_game_specific) {
@@ -946,6 +959,7 @@ void load(const std::filesystem::path& path, bool is_game_specific) {
         readbacksMode.setFromToml(gpu, "readbacksMode", is_game_specific);
         readbackLinearImagesEnabled.setFromToml(gpu, "readbackLinearImages", is_game_specific);
         directMemoryAccessEnabled.setFromToml(gpu, "directMemoryAccess", is_game_specific);
+        skipedHashes.setFromToml(gpu, "skipShaders", is_game_specific);
         shouldDumpShaders.setFromToml(gpu, "dumpShaders", is_game_specific);
         shouldPatchShaders.setFromToml(gpu, "patchShaders", is_game_specific);
         vblankFrequency.setFromToml(gpu, "vblankFrequency", is_game_specific);
@@ -1121,6 +1135,7 @@ void save(const std::filesystem::path& path, bool is_game_specific) {
     shouldCopyGPUBuffers.setTomlValue(data, "GPU", "copyGPUBuffers", is_game_specific);
     readbacksMode.setTomlValue(data, "GPU", "readbacksMode", is_game_specific);
     readbackLinearImagesEnabled.setTomlValue(data, "GPU", "readbackLinearImages", is_game_specific);
+    skipedHashes.setTomlValue(data, "GPU", "skipShaders", is_game_specific);
     shouldDumpShaders.setTomlValue(data, "GPU", "dumpShaders", is_game_specific);
     vblankFrequency.setTomlValue(data, "GPU", "vblankFrequency", is_game_specific);
     isFullscreen.setTomlValue(data, "GPU", "Fullscreen", is_game_specific);

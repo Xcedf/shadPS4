@@ -121,7 +121,7 @@ vk::PrimitiveTopology PrimitiveType(AmdGpu::PrimitiveType type) {
     case AmdGpu::PrimitiveType::RectList:
         return vk::PrimitiveTopology::ePatchList;
     default:
-        UNREACHABLE_MSG("Unimplemented primitive type: {}", static_cast<u32>(type));
+        //sUNREACHABLE_MSG("Unimplemented primitive type: {}", static_cast<u32>(type));
         return vk::PrimitiveTopology::eTriangleList;
     }
 }
@@ -610,6 +610,8 @@ std::span<const SurfaceFormatInfo> SurfaceFormats() {
                                 vk::Format::eR16G16Sint),
         CreateSurfaceFormatInfo(AmdGpu::DataFormat::Format16_16, AmdGpu::NumberFormat::Float,
                                 vk::Format::eR16G16Sfloat),
+        CreateSurfaceFormatInfo(AmdGpu::DataFormat::Format16_16, AmdGpu::NumberFormat::Ubnorm,
+                                vk::Format::eR16G16Unorm),
         // 10_11_11
         CreateSurfaceFormatInfo(AmdGpu::DataFormat::Format10_11_11, AmdGpu::NumberFormat::Float,
                                 vk::Format::eB10G11R11UfloatPack32),
@@ -683,6 +685,8 @@ std::span<const SurfaceFormatInfo> SurfaceFormats() {
                                 vk::Format::eB4G4R4A4UnormPack16),
         // 8_24
         // 24_8
+        CreateSurfaceFormatInfo(AmdGpu::DataFormat::Format24_8, AmdGpu::NumberFormat::Float,
+                                vk::Format::eD24UnormS8Uint),
         // X24_8_32
         // GB_GR
         // BG_RG
