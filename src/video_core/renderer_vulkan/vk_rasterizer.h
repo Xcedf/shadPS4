@@ -68,6 +68,7 @@ public:
     u64 Flush();
     void Finish();
     void OnSubmit();
+    void CommitPendingGpuRanges();
 
     PipelineCache& GetPipelineCache() {
         return pipeline_cache;

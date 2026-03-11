@@ -48,6 +48,10 @@ public:
         return cpu_addr;
     }
 
+    u16& NumFlushes(u32 page) {
+        return flushes[page];
+    }
+
     static constexpr size_t SanitizeAddress(size_t address) {
         return static_cast<size_t>(std::max<s64>(static_cast<s64>(address), 0LL));
     }
@@ -95,8 +99,15 @@ public:
         }
         if constexpr (type == Type::CPU) {
             UpdateProtection<!enable, false>();
-        } else if (Config::getReadbacksMode() == Config::GpuReadbacksMode::Precise) {
-            UpdateProtection<enable, true>();
+        } else if (Config::getReadbacksMode() != Config::GpuReadbacksMode::Disabled) {
+            if (Config::getReadbacksMode() != Config::GpuReadbacksMode::Relaxed) {
+                UpdateProtection<enable, true>();
+            }
+            if (Config::getReadbacksMode() != Config::GpuReadbacksMode::Precise) {
+                for (size_t page = start_page; page != end_page && !enable; ++page) {
+                    ++flushes[page];
+                }
+            }
         }
     }
 
@@ -190,6 +201,7 @@ private:
     RegionBits gpu;
     RegionBits writeable;
     RegionBits readable;
+    RegionWords flushes{};
 };
 
 } // namespace VideoCore
