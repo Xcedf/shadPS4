@@ -65,7 +65,7 @@ int PS4_SYSV_ABI sys_accept(OrbisNetId s, OrbisNetSockaddr* addr, u32* paddrlen)
         u32 error = *Libraries::Kernel::__Error();
         // Don't log EWOULDBLOCK, this is normal to see from non-blocking communication.
         if (error != ORBIS_NET_EWOULDBLOCK) {
-            LOG_ERROR(Lib_Net,
+            LOG_DEBUG(Lib_Net,
                       "s = {} ({}) returned error code creating new socket for accepting: {}", s,
                       file->m_guest_name, error);
         }

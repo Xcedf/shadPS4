@@ -249,7 +249,7 @@ struct PageManager::Impl {
         const u64 aligned_addr = page << PAGE_BITS;
         const u64 aligned_end = page_end << PAGE_BITS;
         if (!rasterizer->IsMapped(aligned_addr, aligned_end - aligned_addr)) {
-            LOG_WARNING(Render,
+            LOG_DEBUG(Render,
                         "Tracking memory region {:#x} - {:#x} which is not fully GPU mapped.",
                         aligned_addr, aligned_end);
         }

@@ -532,7 +532,7 @@ struct AddressSpace::Impl {
             const u64 range_size = std::min(region.base + region.size, virtual_end) - range_addr;
             DWORD old_flags{};
             if (!VirtualProtectEx(process, LPVOID(range_addr), range_size, new_flags, &old_flags)) {
-                UNREACHABLE_MSG(
+                LOG_CRITICAL(Common_Memory,
                     "Failed to change virtual memory protection for address {:#x}, size "
                     "{:#x}, error {}",
                     virtual_addr, size, Common::GetLastErrorMsg());
