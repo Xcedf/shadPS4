@@ -15,6 +15,7 @@ namespace Shader::Backend::SPIRV {
 enum class AuxShaderType : u32 {
     RectListTCS,
     QuadListTCS,
+    QuadStripTCS,
     PassthroughTES,
 };
 
