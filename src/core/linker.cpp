@@ -81,14 +81,6 @@ void Linker::Execute(const std::vector<std::string>& args) {
     const auto& libc_internal_path =
         EmulatorSettings.GetSysModulesDir() / "libSceLibcInternal.sprx";
     bool has_libcinternal = false;
-    if (std::filesystem::exists(libc_internal_path)) {
-        LoadModule(libc_internal_path);
-        has_libcinternal = true;
-    } else {
-        // Need to load HLE, LLE isn't present
-        LOG_INFO(Core_Linker, "Can't Load libSceLibcInternal.sprx switching to HLE");
-        Libraries::LibcInternal::RegisterLib(&GetHLESymbols());
-    }
 
     // Relocate all modules
     RelocateAllImports();

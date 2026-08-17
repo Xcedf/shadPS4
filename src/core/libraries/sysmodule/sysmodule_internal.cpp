@@ -225,6 +225,7 @@ s32 loadModuleInternal(s32 index, s32 argc, const void* argv, s32* res_out) {
              {"libScePngEnc.sprx", &Libraries::PngEnc::RegisterLib},
              {"libSceJson.sprx", nullptr},
              {"libSceJson2.sprx", nullptr},
+             {"libSceLibcInternal.sprx", &Libraries::LibcInternal::RegisterLib},
              {"libSceCesCs.sprx", nullptr},
              {"libSceAt9Enc.sprx", nullptr},
              {"libSceAudiodec.sprx", nullptr},
@@ -447,13 +448,6 @@ s32 preloadModulesForLibkernel() {
 
         // libSceNpWebApi2 and libSceNpGameIntent, skipped for SDK versions below 7.50
         if ((module_index == 0x29 || module_index == 0x2a) && sdk_ver < Common::ElfInfo::FW_750) {
-            continue;
-        }
-
-        if (module_index == 1 || module_index == 2) {
-            // libkernel and libSceLibcInternal aren't directly loaded here.
-            // All we do for those is increment is_loaded
-            g_modules_array[module_index].is_loaded++;
             continue;
         }
 

@@ -103,6 +103,7 @@ void InitHLELibs(Core::Loader::SymbolsResolver* sym) {
     {
         constexpr auto ModulesToLoad = std::to_array<Core::SysModules>({
             {"libkernel.sprx", Libraries::Kernel::RegisterLib},
+			{"libSceLibcInternal.sprx", Libraries::LibcInternal::ForceRegisterLib},
             {"libSceGnmDriver.sprx", Libraries::GnmDriver::RegisterLib},
             {"libSceVideoOut.sprx", Libraries::VideoOut::RegisterLib},
             {"libSceUserService.sprx", Libraries::UserService::RegisterLib},
