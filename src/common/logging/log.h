@@ -62,13 +62,8 @@ static constexpr std::array level_string_views{"Trace", "Debug",    "Info", "War
         }                                                                                          \
     } while (false)
 
-#ifdef NDEBUG
-#define LOG_TRACE(log_class, ...) (void(0))
-#else
 #define LOG_TRACE(log_class, ...)                                                                  \
     LOG_GENERIC(Common::Log::Class::log_class, spdlog::level::trace, __VA_ARGS__)
-#endif
-
 #define LOG_DEBUG(log_class, ...)                                                                  \
     LOG_GENERIC(Common::Log::Class::log_class, spdlog::level::debug, __VA_ARGS__)
 #define LOG_INFO(log_class, ...)                                                                   \
