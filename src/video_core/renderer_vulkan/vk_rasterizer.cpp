@@ -713,7 +713,7 @@ void Rasterizer::BindBuffers(const Shader::Info& stage, Shader::Backend::Binding
             const u32 offset_aligned = Common::AlignDown(offset, alignment);
             const u32 adjust = offset - offset_aligned;
             if (adjust % 4 != 0) {
-                LOG_WARNING(Render_Vulkan, "Buffer binding {} in shader {:#x} isn't dword aligned",
+                LOG_DEBUG(Render_Vulkan, "Buffer binding {} in shader {:#x} isn't dword aligned",
                             i, stage.pgm_hash);
             }
             push_data.AddOffset(binding.buffer, adjust);
@@ -755,7 +755,7 @@ void Rasterizer::BindTextures(const Shader::Info& stage, Shader::Backend::Bindin
     for (const auto& image_desc : stage.images) {
         const auto tsharp = image_desc.GetSharp(stage);
         if (texture_cache.IsMeta(tsharp.Address())) {
-            LOG_WARNING(Render_Vulkan, "Unexpected metadata read by a shader (texture)");
+            LOG_DEBUG(Render_Vulkan, "Unexpected metadata read by a shader (texture)");
         }
 
         const auto data_fmt = tsharp.GetDataFmt();

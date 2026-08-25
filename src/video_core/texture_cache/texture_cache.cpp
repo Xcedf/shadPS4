@@ -721,7 +721,7 @@ ImageId TextureCache::ResolveDepthOverlap(const ImageInfo& requested_info, Bindi
                 cache_image.info.pixel_format, new_info.pixel_format, cache_image.GetImage(),
                 new_image.GetImage());
         } else {
-            LOG_WARNING(Render_Vulkan, "Unimplemented depth overlap copy");
+            LOG_DEBUG(Render_Vulkan, "Unimplemented depth overlap copy");
         }
 
         // Free the cache image.
@@ -1075,9 +1075,6 @@ ImageId TextureCache::FindImageFromRange(VAddr address, size_t size, bool ensure
                 return image_ids[i];
             }
         }
-        LOG_WARNING(Render_Vulkan,
-                    "Failed to find exact image match for copy addr={:#x}, size={:#x}", address,
-                    size);
     }
     return {};
 }
