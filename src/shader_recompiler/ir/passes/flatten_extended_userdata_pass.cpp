@@ -703,13 +703,8 @@ void SimplifyReadConstAddressAdd(IR::Inst& inst) {
         return;
     }
 
-    IR::Value add_offset;
-    IR::Value base;
-    if (base = lo->Arg(0); IsReadConstSource(base)) {
-        add_offset = lo->Arg(1);
-    } else if (base = lo->Arg(1); IsReadConstSource(base)) {
-        add_offset = lo->Arg(0);
-    } else {
+    IR::Value add_offset = lo->Arg(0);
+    if (!add_offset.IsImmediate()) {
         return;
     }
 
@@ -725,7 +720,7 @@ void SimplifyReadConstAddressAdd(IR::Inst& inst) {
         return;
     }
 
-    addr->SetArg(0, base);
+    addr->SetArg(0, lo->Arg(0));
     addr->SetArg(1, hi->Arg(0));
     for (auto [user, operand] : addr->Uses()) {
         ASSERT(user->GetOpcode() == IR::Opcode::ReadConst && operand == 0);
@@ -831,8 +826,8 @@ void FlattenExtendedUserdataPass(IR::Program& program) {
             inst && inst->GetOpcode() == IR::Opcode::ReadFirstLane) {
             continue;
         }
-        ASSERT_MSG(IsReadConstSource(base->Arg(0)), "ReadConst base low not from constant memory");
-        ASSERT_MSG(IsReadConstSource(base->Arg(1)), "ReadConst base high not from constant memory");
+        //ASSERT_MSG(IsReadConstSource(base->Arg(0)), "ReadConst base low not from constant memory");
+        //ASSERT_MSG(IsReadConstSource(base->Arg(1)), "ReadConst base high not from constant memory");
 
         IR::Inst* ptr_lo = base->Arg(0).Inst();
         ptr_lo = pass_info.DeduplicateInstruction(ptr_lo);

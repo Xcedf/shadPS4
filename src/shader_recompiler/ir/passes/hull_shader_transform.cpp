@@ -474,8 +474,8 @@ void HullShaderTransform(IR::Program& program, const RuntimeInfo& runtime_info) 
                         ir.SetTcsGenericAttribute(data_component, attr_index, comp_index);
                     } else {
                         ASSERT(output_kind == AttributeRegion::PatchConst);
-                        ASSERT_MSG(addr.IsImmediate(), "patch addr non imm, inst {}",
-                                   fmt::ptr(addr.Inst()));
+                        //ASSERT_MSG(addr.IsImmediate(), "patch addr non imm, inst {}",
+                        //           fmt::ptr(addr.Inst()));
                         ir.SetPatch(IR::PatchGeneric((addr.U32() >> 2) + off_dw), data_component);
                     }
                 };

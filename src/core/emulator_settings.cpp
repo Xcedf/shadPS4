@@ -76,6 +76,10 @@ std::optional<T> get_optional(const toml::value& v, const std::string& key) {
         if (it->second.is_boolean()) {
             return toml::get<bool>(it->second);
         }
+    } else if constexpr (std::is_same_v<T, std::vector<u64>>) {
+        if (it->second.is_array()) {
+            return toml::get<std::vector<u64>>(it->second);
+        }
     } else {
         static_assert([] { return false; }(), "Unsupported type in get_optional<T>");
     }
@@ -615,6 +619,7 @@ bool EmulatorSettingsImpl::TransferSettings() {
         setFromToml(s.null_gpu, gpu, "nullGpu");
         setFromToml(s.copy_gpu_buffers, gpu, "copyGPUBuffers");
         setFromToml(s.readbacks_mode, gpu, "readbacksMode");
+        setFromToml(s.skip_shaders, gpu, "skipShaders");
         setFromToml(s.readback_linear_images_enabled, gpu, "readbackLinearImages");
         setFromToml(s.direct_memory_access_enabled, gpu, "directMemoryAccess");
         setFromToml(s.dump_shaders, gpu, "dumpShaders");
