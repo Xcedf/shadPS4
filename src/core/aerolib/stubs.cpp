@@ -33,10 +33,10 @@ static std::string stub_nids_unknown[MAX_STUBS];
 static u64 CommonStub(int stub_index, void* addr) {
     auto entry = stub_nids[stub_index];
     if (entry) {
-        LOG_ERROR(Core, "Stub: {} (nid: {}) called, returning zero to {}", entry->name, entry->nid,
+        LOG_DEBUG(Core, "Stub: {} (nid: {}) called, returning zero to {}", entry->name, entry->nid,
                   addr);
     } else {
-        LOG_ERROR(Core, "Stub: Unknown (nid: {}) called, returning zero to {}",
+        LOG_DEBUG(Core, "Stub: Unknown (nid: {}) called, returning zero to {}",
                   stub_nids_unknown[stub_index], addr);
     }
     return 0;
