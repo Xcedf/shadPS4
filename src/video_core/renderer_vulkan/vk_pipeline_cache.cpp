@@ -371,6 +371,23 @@ const ComputePipeline* PipelineCache::GetComputePipeline() {
     return it->second.get();
 }
 
+bool ShouldSkipShader(u64 shader_hash, const char* shader_type) {
+    //std::vector<u64> skip_hashes = EmulatorSettings.GetSkipShaders();
+    std::vector<u64> skip_hashes = { 0x434b7f77, 0x7d700b8, 0xe0f6e2d4, 0xa34e4248, // Tearaway
+        0x8d1b127c};
+    if (!EmulatorSettings.IsDirectMemoryAccessEnabled()) {
+        skip_hashes.push_back(static_cast<u64>(0xc02c15fc)); // Order 1886
+        skip_hashes.push_back(static_cast<u64>(0x52f8c3e8));
+        skip_hashes.push_back(static_cast<u64>(0x43b8ee5e)); // Uncharted 1&2
+    }
+    shader_hash = shader_hash & INT64_MAX;
+    if (std::ranges::contains(skip_hashes, shader_hash)) {
+        // LOG_WARNING(Render_Vulkan, "Skipped {} shader hash {:#x}.", shader_type, shader_hash);
+        return true;
+    }
+    return false;
+}
+
 bool PipelineCache::RefreshGraphicsKey() {
     std::memset(&graphics_key, 0, sizeof(GraphicsPipelineKey));
     const auto& regs = liverpool->regs;
@@ -487,6 +504,9 @@ bool PipelineCache::RefreshGraphicsStages() {
         }
 
         const auto params = AmdGpu::GetParams(*pgm);
+        if (ShouldSkipShader(params.hash, "graphics")) {
+            return false;
+        }
         std::optional<Shader::Gcn::FetchShaderData> fetch_shader_;
         std::tie(infos[stage_out_idx], modules[stage_out_idx], fetch_shader_,
                  key.stage_hashes[stage_out_idx]) =
@@ -513,6 +533,7 @@ bool PipelineCache::RefreshGraphicsStages() {
 
     switch (regs.stage_enable.raw) {
     case AmdGpu::ShaderStageEnable::VgtStages::EsGs:
+        return false;
         if (!instance.IsGeometryStageSupported()) {
             LOG_WARNING(Render_Vulkan, "Geometry shader stage unsupported, skipping");
             return false;
@@ -596,6 +617,9 @@ bool PipelineCache::RefreshComputeKey() {
     Shader::Backend::Bindings binding{};
     const auto& cs_pgm = liverpool->GetCsRegs();
     const auto cs_params = AmdGpu::GetParams(cs_pgm);
+    if (ShouldSkipShader(cs_params.hash, "compute")) {
+        return false;
+    }
     std::tie(infos[0], modules[0], fetch_shader, compute_key.value) =
         GetProgram(Shader::Stage::Compute, LogicalStage::Compute, cs_params, binding);
     return true;
