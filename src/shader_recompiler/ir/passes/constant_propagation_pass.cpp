@@ -637,12 +637,6 @@ void ConstantPropagation(IR::Block& block, IR::Inst& inst) {
     case IR::Opcode::CompositeExtractF32x4:
         return FoldCompositeExtract(inst, IR::Opcode::CompositeConstructF32x4,
                                     IR::Opcode::CompositeInsertF32x4);
-    case IR::Opcode::CompositeConstructU32x2:
-        return FoldCompositeConstruct(inst, IR::Opcode::CompositeExtractU32x2);
-    case IR::Opcode::CompositeConstructU32x3:
-        return FoldCompositeConstruct(inst, IR::Opcode::CompositeExtractU32x3);
-    case IR::Opcode::CompositeConstructU32x4:
-        return FoldCompositeConstruct(inst, IR::Opcode::CompositeExtractU32x4);
     case IR::Opcode::ConvertF32F16:
         return FoldConvert(inst, IR::Opcode::ConvertF16F32);
     case IR::Opcode::ConvertF16F32:

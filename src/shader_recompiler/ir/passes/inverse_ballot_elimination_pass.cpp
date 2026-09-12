@@ -63,7 +63,6 @@ void InverseBallotEliminationPass(IR::Program& program) {
     for (IR::Block* const block : program.blocks) {
         RunLocalCSE(block);
         for (IR::Inst& inst : block->Instructions()) {
-            TrySimplifyInst(inst);
             if (inst.GetOpcode() != IR::Opcode::InverseBallot) {
                 continue;
             }
