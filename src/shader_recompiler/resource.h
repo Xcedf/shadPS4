@@ -69,8 +69,6 @@ enum class SharpFetchPostOp : u8 {
 enum class BufferType : u8 {
     Guest,
     Flatbuf,
-    BdaPagetable,
-    FaultBuffer,
     GdsBuffer,
     SharedMemory,
     ClipPlanes,

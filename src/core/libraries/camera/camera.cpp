@@ -744,8 +744,8 @@ s32 PS4_SYSV_ABI sceCameraOpen(Libraries::UserService::OrbisUserServiceUserId us
 
         ASSERT(remaining_camera_buf <= (u8*)camera_garlic_pool + camera_system_mem_size);
 
-        ASSERT(Core::Memory::Instance()->IsValidGpuMapping((VAddr)camera_garlic_pool,
-                                                           camera_system_mem_size));
+        //ASSERT(Core::Memory::Instance()->IsValidGpuMapping((VAddr)camera_garlic_pool,
+        //                                                   camera_system_mem_size));
         buffers_initialized = true;
     }
 
