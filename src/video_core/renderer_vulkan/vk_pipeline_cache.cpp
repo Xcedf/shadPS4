@@ -554,7 +554,7 @@ bool PipelineCache::RefreshGraphicsStages() {
             return false;
         }
         if (regs.vgt_gs_mode.onchip || regs.vgt_strmout_config.raw) {
-            LOG_WARNING(Render_Vulkan, "Geometry shader features unsupported, skipping");
+            LOG_DEBUG(Render_Vulkan, "Geometry shader features unsupported, skipping");
             return false;
         }
         if (!bind_stage(HwStage::Export, SwStage::Vertex)) {

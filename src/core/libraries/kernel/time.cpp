@@ -456,7 +456,7 @@ s32 PS4_SYSV_ABI sceKernelGettimezone(OrbisKernelTimezone* tz) {
 
 s32 PS4_SYSV_ABI sceKernelConvertLocaltimeToUtc(time_t param_1, int64_t param_2, time_t* seconds,
                                                 OrbisKernelTimezone* timezone, s32* dst_seconds) {
-    LOG_INFO(Kernel, "called");
+    LOG_DEBUG(Kernel, "called");
     if (timezone) {
         sceKernelGettimezone(timezone);
         param_1 -= (timezone->tz_minuteswest + timezone->tz_dsttime) * 60;
