@@ -40,12 +40,6 @@ Block::iterator Block::PrependNewInst(iterator insertion_point, Opcode op,
 }
 
 void Block::AddBranch(Block* block) {
-    if (std::ranges::find(imm_successors, block) != imm_successors.end()) {
-        UNREACHABLE_MSG("Successor already inserted");
-    }
-    if (std::ranges::find(block->imm_predecessors, this) != block->imm_predecessors.end()) {
-        UNREACHABLE_MSG("Predecessor already inserted");
-    }
     imm_successors.push_back(block);
     block->imm_predecessors.push_back(this);
 }
