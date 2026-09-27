@@ -1236,4 +1236,40 @@ struct PM4CmdCondExec {
     }
 };
 
+// sets up the gpu predicate condition doesnt skip anything itself the per packet predicate bit does that layout matches AMDs real PAL driver source
+struct PM4CmdSetPredication {
+    // which predicate source this packet configures values must match hardware exactly
+    enum class PredicateOp : u32 {
+        Clear = 0, ///< turns predication off
+        Zpass = 1, ///< occlusion query draw if visible
+        PrimCount = 2, ///< streamout overflow check
+        Boolean64 = 3, ///< plain 64 bit flag dx12 style
+        Boolean32 = 4, ///< plain 32 bit flag vulkan style
+    };
+
+    PM4Type3Header header; ///< standard header
+    union {
+        u32 dw1; ///< raw dword 2
+        BitField<8, 1, u32> pred_bool; ///< polarity 1 means draw when true
+        BitField<12, 1, u32> hint; ///< zpass only skip waiting for the final count
+        BitField<16, 3, PredicateOp> pred_op; ///< which predicate source
+        BitField<31, 1, u32> continue_bit; ///< keep accumulating instead of starting fresh
+    };
+    union {
+        u32 addr_lo_raw; ///< raw dword 3
+        BitField<4, 28, u32> start_addr_lo; ///< addr bits 31 to 4 16 byte aligned
+    };
+    union {
+        u32 addr_hi_raw; ///< raw dword 4
+        BitField<0, 8, u32> start_addr_hi; ///< addr bits 39 to 32
+    };
+
+    // rebuilds the host pointer from the two address dwords
+    template <typename T = u32*>
+    [[nodiscard]] T Address() const {
+        return std::bit_cast<T>((u64(start_addr_hi.Value()) << 32) |
+                                (u64(start_addr_lo.Value()) << 4));
+    }
+};
+
 } // namespace AmdGpu

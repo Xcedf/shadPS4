@@ -262,6 +262,14 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
         case 3:
             const u32 count = header->type3.NumWords();
             const PM4ItOpcode opcode = header->type3.opcode;
+
+            // any packet can opt into predication via its own header bit so check it once here for
+            // all opcodes
+            if (header->type3.predicate == PM4Predicate::PredEnable && !predication_passed) {
+                dcb = NextPacket(dcb, header->type3.NumWords() + 1);
+                continue;
+            }
+
             switch (opcode) {
             case PM4ItOpcode::Nop: {
                 const auto* nop = reinterpret_cast<const PM4CmdNop*>(header);
@@ -417,7 +425,58 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 break;
             }
             case PM4ItOpcode::SetPredication: {
-                LOG_DEBUG(Render, "Unimplemented IT_SET_PREDICATION");
+                const auto* set_predication = reinterpret_cast<const PM4CmdSetPredication*>(header);
+                using PredicateOp = PM4CmdSetPredication::PredicateOp;
+                const PredicateOp pred_op = set_predication->pred_op.Value();
+                // compute the addr once and reuse it below instead of calling twice
+                const auto address = set_predication->Address<const void*>();
+
+                if (pred_op == PredicateOp::Clear || address == nullptr) {
+                    // clear or a null address just turns predication off
+                    predication_passed = true;
+                    break;
+                }
+
+                auto* memory = Core::Memory::Instance();
+                if (!memory->IsValidMapping(reinterpret_cast<VAddr>(address), sizeof(u64))) {
+                    LOG_WARNING(Render, "IT_SET_PREDICATION address {:#x} is not mapped, ignoring",
+                                reinterpret_cast<VAddr>(address));
+                    predication_passed = true;
+                    break;
+                }
+
+                // polarity flips the result 0 means invert
+                const bool polarity = set_predication->pred_bool.Value() != 0;
+
+                switch (pred_op) {
+                case PredicateOp::Boolean32: {
+                    const bool condition = *reinterpret_cast<const u32*>(address) != 0;
+                    predication_passed = polarity ? condition : !condition;
+                    break;
+                }
+                case PredicateOp::Boolean64: {
+                    const bool condition = *reinterpret_cast<const u64*>(address) != 0;
+                    predication_passed = polarity ? condition : !condition;
+                    break;
+                }
+                case PredicateOp::Zpass:
+                case PredicateOp::PrimCount:
+                default: {
+                    // no occlusion query or streamout backend yet so dont skip anything for these
+                    static bool logged_once = false;
+                    if (!logged_once) {
+                        logged_once = true;
+                        // plain bool is fine this only ever runs on the one gpu thread
+                        LOG_WARNING(Render,
+                                    "IT_SET_PREDICATION with pred_op = {}: this predicate "
+                                    "source isn't implemented yet, predicated packets will "
+                                    "run unconditionally for it",
+                                    static_cast<u32>(pred_op));
+                    }
+                    predication_passed = true;
+                    break;
+                }
+                }
                 break;
             }
             case PM4ItOpcode::IndexType: {

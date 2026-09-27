@@ -209,6 +209,9 @@ private:
     u32 num_counter_pairs{};
     u64 pixel_counter{};
 
+    // result of the last SetPredication starts true since predication starts disabled
+    bool predication_passed{true};
+
     struct ConstantEngine {
         void Reset() {
             ce_count = 0;
