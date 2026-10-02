@@ -267,7 +267,7 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                 case PM4CmdNop::PayloadType::PatchedFlip: {
                     // There is no evidence that GPU CP drives flip events by parsing
                     // special NOP packets. For convenience lets assume that it does.
-                    Platform::IrqC::Instance()->Signal(Platform::InterruptId::GfxFlip);
+                    flip_signal_armed = true;
                     break;
                 }
                 case PM4CmdNop::PayloadType::DebugMarkerPush: {
@@ -878,6 +878,11 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
         }
     }
 
+    if (flip_signal_armed) {
+        flip_signal_armed = false;
+        Platform::IrqC::Instance()->Signal(Platform::InterruptId::GfxFlip);
+    }
+
     if (ce_task.handle) {
         while (!ce_task.handle.done()) {
             RESUME_GFX(ce_task);
@@ -929,13 +934,13 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, u32 vqid) {
 
         if (header->type == 2) {
             // Type-2 packet are used for padding purposes
+            continue;
             next_dw_off = 1;
             acb = NextPacket(acb, next_dw_off);
             if constexpr (!is_indirect) {
                 *queue.read_addr += next_dw_off;
                 *queue.read_addr %= queue.ring_size_dw;
             }
-            continue;
         }
 
         if (header->type != 3) {

@@ -363,6 +363,7 @@ T Translator::GetSrc(const InstOperand& operand) {
     case OperandField::SignedConstIntNeg:
         value = get_imm(-s32(operand.code) + SignedConstIntNegMin - 1);
         break;
+    case OperandField::LdsDirect:
     case OperandField::LiteralConst:
         value = get_imm(operand.code);
         break;
@@ -1268,7 +1269,7 @@ void Translator::TranslateInstruction(const GcnInst& inst) {
     case InstCategory::DebugProfile:
         break;
     default:
-        UNREACHABLE();
+        UNREACHABLE_MSG("Unsupported TranslateInstruction: {:#x}", static_cast<u32>(inst.category));
     }
 }
 
