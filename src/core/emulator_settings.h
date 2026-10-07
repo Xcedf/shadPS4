@@ -632,9 +632,7 @@ private:
     }
 
     static void PrintChangedSummary(const std::vector<std::string>& changed);
-    void ApplyLegacyNetworkKeys(const nlohmann::json& general);
-    static void SyncLegacyNetworkKeys(const nlohmann::json& old_general, nlohmann::json& general,
-                                      const nlohmann::json& network);
+    void MigrateNetworkKeys(const nlohmann::json& general, const nlohmann::json& network);
 
     /// Applies changed defaults to a config saved before they changed. Returns true if it
     /// changed anything.
