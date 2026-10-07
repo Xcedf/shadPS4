@@ -217,7 +217,7 @@ bool AvPlayerState::Pause() {
 bool AvPlayerState::Resume() {
     std::shared_lock lock(m_source_mutex);
     if (m_up_source == nullptr || m_current_state != AvState::Pause) {
-        LOG_ERROR(Lib_AvPlayer, "Could not resume playback.");
+        LOG_DEBUG(Lib_AvPlayer, "Could not resume playback.");
         return false;
     }
     m_up_source->Resume();
