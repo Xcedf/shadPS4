@@ -143,6 +143,7 @@ struct Program {
 struct DrawIndirectParams {
     u16 vertex_sgpr_offset;
     u32 instance_sgpr_offset;
+    bool is_indirect;
 };
 
 class PipelineCache {
