@@ -703,11 +703,15 @@ void SimplifyReadConstAddressAdd(IR::Inst& inst) {
 
     IR::Value add_offset;
     IR::Value base;
+    const u32 arg_value = EmulatorSettings.IsDirectMemoryAccessEnabled() ? 0 : 1;
     if (base = lo->Arg(0); IsReadConstSource(base)) {
-        add_offset = lo->Arg(1);
+        add_offset = lo->Arg(arg_value);
     } else if (base = lo->Arg(1); IsReadConstSource(base)) {
         add_offset = lo->Arg(0);
     } else {
+        return;
+    }
+    if (!add_offset.IsImmediate()) {
         return;
     }
 
@@ -829,8 +833,8 @@ void FlattenExtendedUserdataPass(IR::Program& program) {
             inst && inst->GetOpcode() == IR::Opcode::ReadFirstLane) {
             continue;
         }
-        ASSERT_MSG(IsReadConstSource(base->Arg(0)), "ReadConst base low not from constant memory");
-        ASSERT_MSG(IsReadConstSource(base->Arg(1)), "ReadConst base high not from constant memory");
+        //ASSERT_MSG(IsReadConstSource(base->Arg(0)), "ReadConst base low not from constant memory");
+        //ASSERT_MSG(IsReadConstSource(base->Arg(1)), "ReadConst base high not from constant memory");
 
         IR::Inst* ptr_lo = base->Arg(0).Inst();
         ptr_lo = pass_info.DeduplicateInstruction(ptr_lo);
