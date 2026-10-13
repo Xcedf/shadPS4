@@ -244,6 +244,7 @@ void EmulatorSettingsImpl::SetAddonInstallDir(const std::filesystem::path& dir) 
 // ── Game-specific override management ────────────────────────────────
 void EmulatorSettingsImpl::ClearGameSpecificOverrides() {
     ClearGroupOverrides(m_general);
+    ClearGroupOverrides(m_network);
     ClearGroupOverrides(m_log);
     ClearGroupOverrides(m_debug);
     ClearGroupOverrides(m_input);
@@ -263,6 +264,22 @@ bool EmulatorSettingsImpl::Save(const std::string& serial) {
 
             json generalObj = json::object();
             SaveGroupGameSpecific(m_general, generalObj);
+
+            json networkObj = json::object();
+            SaveGroupGameSpecific(m_network, networkObj);
+            j["Network"] = networkObj;
+
+            json existing = json::object();
+            if (std::ifstream existingIn{path}; existingIn.good()) {
+                try {
+                    existingIn >> existing;
+                } catch (...) {
+                    existing = json::object();
+                }
+            }
+            if (existing.contains("General") && existing["General"].is_object()) {
+                SyncLegacyNetworkKeys(existing["General"], generalObj, networkObj);
+            }
             j["General"] = generalObj;
 
             json logObj = json::object();
@@ -306,6 +323,7 @@ bool EmulatorSettingsImpl::Save(const std::string& serial) {
 
             json j;
             j["General"] = m_general;
+            j["Network"] = m_network;
             j["Log"] = m_log;
             j["Debug"] = m_debug;
             j["Input"] = m_input;
@@ -330,6 +348,9 @@ bool EmulatorSettingsImpl::Save(const std::string& serial) {
                 else
                     existing[section] = val;
             }
+            if (existing["General"].is_object()) {
+                SyncLegacyNetworkKeys(existing["General"], existing["General"], j["Network"]);
+            }
 
             std::ofstream out(path);
             if (!out) {
@@ -342,6 +363,29 @@ bool EmulatorSettingsImpl::Save(const std::string& serial) {
     } catch (const std::exception& e) {
         LOG_ERROR(Config, "Error saving settings: {}", e.what());
         return false;
+    }
+}
+
+void EmulatorSettingsImpl::ApplyLegacyNetworkKeys(const json& general) {
+    json current = m_network;
+    bool found = false;
+    for (const auto& item : m_network.GetOverrideableFields()) {
+        if (general.contains(item.key)) {
+            current[item.key] = general.at(item.key);
+            found = true;
+        }
+    }
+    if (found) {
+        m_network = current.get<NetworkSettings>();
+    }
+}
+
+void EmulatorSettingsImpl::SyncLegacyNetworkKeys(const json& old_general, json& general,
+                                                 const json& network) {
+    for (const auto& [key, value] : network.items()) {
+        if (old_general.contains(key)) {
+            general[key] = value;
+        }
     }
 }
 
@@ -370,6 +414,10 @@ bool EmulatorSettingsImpl::Load(const std::string& serial) {
                 };
 
                 mergeGroup(m_general, "General");
+                mergeGroup(m_network, "Network");
+                if (gj.contains("General") && gj["General"].is_object()) {
+                    ApplyLegacyNetworkKeys(gj["General"]);
+                }
                 mergeGroup(m_log, "Log");
                 mergeGroup(m_debug, "Debug");
                 mergeGroup(m_input, "Input");
@@ -440,6 +488,10 @@ bool EmulatorSettingsImpl::Load(const std::string& serial) {
 
             if (gj.contains("General"))
                 ApplyGroupOverrides(m_general, gj.at("General"), changed);
+            if (gj.contains("Network"))
+                ApplyGroupOverrides(m_network, gj.at("Network"), changed);
+            if (gj.contains("General"))
+                ApplyGroupOverrides(m_network, gj.at("General"), changed);
             if (gj.contains("Log"))
                 ApplyGroupOverrides(m_log, gj.at("Log"), changed);
             if (gj.contains("Debug"))
@@ -474,6 +526,7 @@ bool EmulatorSettingsImpl::Load(const std::string& serial) {
 
 void EmulatorSettingsImpl::SetDefaultValues() {
     m_general = GeneralSettings{};
+    m_network = NetworkSettings{};
     m_log = LogSettings{};
     m_debug = DebugSettings{};
     m_input = InputSettings{};
@@ -510,7 +563,7 @@ bool EmulatorSettingsImpl::TransferSettings() {
         setFromToml(s.discord_rpc_enabled, general, "enableDiscordRPC");
         setFromToml(s.show_splash, general, "showSplash");
         setFromToml(s.trophy_notification_side, general, "sideTrophy");
-        setFromToml(s.connected_to_network, general, "isConnectedToNetwork");
+        setFromToml(m_network.connected_to_network, general, "isConnectedToNetwork");
         setFromToml(s.sys_modules_dir, general, "sysModulesPath");
         setFromToml(s.font_dir, general, "fontsPath");
         // setFromToml(, general, "userName");
@@ -732,6 +785,7 @@ std::vector<std::string> EmulatorSettingsImpl::GetAllOverrideableKeys() const {
             keys.push_back(item.key);
     };
     addGroup(m_general.GetOverrideableFields());
+    addGroup(m_network.GetOverrideableFields());
     addGroup(m_log.GetOverrideableFields());
     addGroup(m_debug.GetOverrideableFields());
     addGroup(m_input.GetOverrideableFields());
