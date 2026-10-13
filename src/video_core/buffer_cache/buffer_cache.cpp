@@ -729,9 +729,6 @@ std::pair<const Buffer*, u64> BufferCache::ObtainBuffer(VAddr device_addr, u32 s
     if (!synced) {
         // Also copies in an image the texel buffer aliases, so that isn't repeated here.
         SynchronizeMemory(arena, device_addr, size, is_written, is_texel_buffer);
-    } else if (is_texel_buffer && !is_written) {
-        // The GPU may have drawn to the image since.
-        SynchronizeMemoryFromImage(arena, device_addr, size);
     }
     if (is_written) {
         MarkGpuModifiedRange(device_addr, size);
