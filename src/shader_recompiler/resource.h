@@ -138,6 +138,13 @@ struct ImageResource {
 
     constexpr AmdGpu::Image GetSharp(const auto& info) const noexcept {
         AmdGpu::Image image{};
+        if (info.pgm_hash == 0xa7b66f58 || info.pgm_hash == 0xefaaab2b) {
+            return AmdGpu::Image::Null(is_depth);
+        }
+        if (info.pgm_hash == 0x434b7f77 || info.pgm_hash == 0x7d700b8 || 
+            info.pgm_hash == 0xe0f6e2d4 || info.pgm_hash == 0xa34e4248) {
+            return AmdGpu::Image::Null(is_depth);
+        }
         if (!Fetch(info.flattened_ud_buf.data(), &image)) {
             return AmdGpu::Image::Null(is_depth);
         }
