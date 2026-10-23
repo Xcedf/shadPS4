@@ -1171,7 +1171,7 @@ void Rasterizer::BindBuffers(const Shader::Info& stage, Shader::Backend::Binding
             } else {
                 const u64 size = memory->ClampRangeSize(vsharp.base_address, vsharp.GetSize());
                 if (size != vsharp.GetSize()) {
-                    LOG_ERROR(Render, "Clamped size from {} to {} for stage {:#x}",
+                    LOG_DEBUG(Render, "Clamped size from {} to {} for stage {:#x}",
                               vsharp.GetSize(), size, stage.pgm_hash);
                 }
                 VideoCore::ObtainBufferFlags flags = {};
@@ -1186,7 +1186,7 @@ void Rasterizer::BindBuffers(const Shader::Info& stage, Shader::Backend::Binding
                 const u64 offset_aligned = Common::AlignDown(offset, alignment);
                 const u64 adjust = offset - offset_aligned;
                 if (adjust % 4 != 0) {
-                    LOG_WARNING(Render_Vulkan, "Buffer binding in shader {:#x} isn't dword aligned",
+                    LOG_DEBUG(Render_Vulkan, "Buffer binding in shader {:#x} isn't dword aligned",
                                 stage.pgm_hash);
                 }
                 push_data.AddOffset(binding.buffer, adjust);
@@ -1229,7 +1229,7 @@ void Rasterizer::BindTextures(const Shader::Info& stage, Shader::Backend::Bindin
 
         if (!memory->IsValidGpuMapping(tsharp.Address(), 0) ||
             !magic_enum::enum_contains(data_fmt) || !magic_enum::enum_contains(num_fmt)) {
-            LOG_WARNING(Render_Vulkan,
+            LOG_DEBUG(Render_Vulkan,
                         "Rejecting invalid T# address={:#x}, pitch={}, width={}, "
                         "data_format={}, num_format={}",
                         tsharp.Address(), tsharp.pitch, tsharp.width, static_cast<u32>(data_fmt),

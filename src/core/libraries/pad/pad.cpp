@@ -177,7 +177,7 @@ int PS4_SYSV_ABI scePadGetDeviceInfo() {
 
 int PS4_SYSV_ABI scePadGetExtControllerInformation(s32 handle,
                                                    OrbisPadExtendedControllerInformation* pInfo) {
-    LOG_INFO(Lib_Pad, "called handle = {}", handle);
+    LOG_DEBUG(Lib_Pad, "called handle = {}", handle);
     std::memset(pInfo, 0, sizeof(OrbisPadExtendedControllerInformation));
     return scePadGetControllerInformation(handle, &pInfo->base);
 }
@@ -351,7 +351,7 @@ int PS4_SYSV_ABI scePadOpen(Libraries::UserService::OrbisUserServiceUserId userI
 
 int PS4_SYSV_ABI scePadOpenExt(Libraries::UserService::OrbisUserServiceUserId userId, s32 type,
                                s32 index, const OrbisPadOpenExtParam* pParam) {
-    LOG_WARNING(Lib_Pad, "Redirect to scePadOpen");
+    LOG_DEBUG(Lib_Pad, "Redirect to scePadOpen");
     return scePadOpen(userId, type, index, nullptr);
 }
 
