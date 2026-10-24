@@ -127,6 +127,8 @@ enum class MipStorageFallbackMode : u16 {
 
 struct ImageResource {
     SharpFetch<AmdGpu::Image> sharp_fetch{};
+    u32 descriptor_count{};
+    BufferResource descriptor_table{};
     bool is_depth{};
     bool is_atomic{};
     bool is_array{};
@@ -137,6 +139,15 @@ struct ImageResource {
     SharpFetchPostOp post_op{};
 
     constexpr AmdGpu::Image GetSharp(const auto& info) const noexcept {
+        for (u32 i = 0; i < descriptor_count; ++i) {
+            if (const auto image = GetSharp(info, i); image) {
+                return image;
+            }
+        }
+        return GetSharp(info, 0);
+    }
+
+    constexpr AmdGpu::Image GetSharp(const auto& info, u32 index) const noexcept {
         AmdGpu::Image image{};
         if (info.pgm_hash == 0xa7b66f58 || info.pgm_hash == 0xefaaab2b) {
             return AmdGpu::Image::Null(is_depth);
@@ -145,7 +156,7 @@ struct ImageResource {
             info.pgm_hash == 0xe0f6e2d4 || info.pgm_hash == 0xa34e4248) {
             return AmdGpu::Image::Null(is_depth);
         }
-        if (!Fetch(info.flattened_ud_buf.data(), &image)) {
+        if (!Fetch(info.flattened_ud_buf.data() + index * 8, &image)) {
             return AmdGpu::Image::Null(is_depth);
         }
         if (post_op == SharpFetchPostOp::ConvertCubeTo2DArray) {
@@ -178,6 +189,9 @@ struct ImageResource {
     }
 
     u32 NumBindings(const auto& info) const {
+        if (descriptor_count != 0) {
+            return descriptor_count;
+        }
         const AmdGpu::Image tsharp = GetSharp(info);
         return (mip_fallback_mode == MipStorageFallbackMode::DynamicIndex)
                    ? (tsharp.last_level - tsharp.base_level + 1)
