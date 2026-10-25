@@ -730,10 +730,10 @@ void Runtime::AccessBuffer(const VideoCore::Buffer* handle, u64 offset, u64 size
         vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eTransformFeedbackWriteEXT;
 
     if (src_access & WRITE_MASK) {
-        resource->write_ranges.Add(range);
+        resource->write_ranges.Add(range.start, range.end);
     }
     if (src_access & READ_MASK) {
-        resource->read_ranges.Add(range);
+        resource->read_ranges.Add(range.start, range.end);
     }
 
     memory_barrier.srcStageMask |= src_stage;

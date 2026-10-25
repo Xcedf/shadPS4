@@ -51,13 +51,22 @@ struct Program {
     static constexpr size_t MaxPermutations = 8;
     using ModuleList = boost::container::small_vector<Module, MaxPermutations>;
 
+    struct SharpDword {
+        u16 index;
+        bool nonzero;
+        u32 mask;
+
+        bool Same(u32 a, u32 b) const noexcept {
+            return ((a ^ b) & mask) == 0 && (!nonzero || (a == 0) == (b == 0));
+        }
+    };
     struct LastLookup {
         bool valid{};
         size_t perm_idx{};
         VAddr pgm_base{};
         Shader::Backend::Bindings start{};
         Shader::RuntimeInfo runtime_info{};
-        std::vector<u32> flattened_ud_buf;
+        std::vector<u32> user_data;
         /// The fetch shader and the vertex buffer sharps it loads, which are read from memory
         /// rather than from the flattened user data.
         std::vector<u32> fetch_code;
@@ -65,10 +74,12 @@ struct Program {
 
         bool Matches(const Shader::Info& info, const Shader::RuntimeInfo& runtime_info_,
                      const Shader::Backend::Bindings& start_,
-                     const Shader::Gcn::FetchShaderData& fetch) const;
+                     const Shader::Gcn::FetchShaderData& fetch,
+                     const std::vector<SharpDword>* sharp_dwords) const;
         void Remember(const Shader::Info& info, const Shader::RuntimeInfo& runtime_info_,
                       const Shader::Backend::Bindings& start_, size_t perm_idx_,
-                      const Shader::Gcn::FetchShaderData& fetch);
+                      const Shader::Gcn::FetchShaderData& fetch,
+                      const std::vector<SharpDword>* sharp_dwords);
     };
 
     static constexpr size_t NumLastLookups = 4;
@@ -76,6 +87,17 @@ struct Program {
     ModuleList modules{};
     std::array<LastLookup, NumLastLookups> last_lookups{};
     size_t next_last_lookup{};
+    std::vector<SharpDword> sharp_dwords;
+    bool sharp_dwords_found{};
+    bool compare_all_dwords{};
+
+    /// Lists the dwords sharps are read from, once the resources of the program are known.
+    void FindSharpDwords();
+
+    /// The dwords lookups compare, or nullptr for all of them.
+    const std::vector<SharpDword>* LookupDwords() const {
+        return compare_all_dwords ? nullptr : &sharp_dwords;
+    }
 
     Program() = default;
     Program(Shader::HwStage stage, Shader::SwStage l_stage, Shader::ShaderParams params)

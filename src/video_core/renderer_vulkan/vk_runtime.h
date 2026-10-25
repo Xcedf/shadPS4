@@ -80,15 +80,87 @@ private:
     void MakeCurrent(const VideoCore::Buffer* handle);
 
 private:
+    class AccessRanges {
+    public:
+        void Add(u64 start, u64 end) {
+            if (start >= end) [[unlikely]] {
+                return;
+            }
+            if (!pending.empty()) {
+                // Consecutive draws mostly access the same or neighbouring memory.
+                Interval& last = pending.back();
+                if (start <= last.end && last.start <= end) {
+                    last.start = std::min(last.start, start);
+                    last.end = std::max(last.end, end);
+                    return;
+                }
+            }
+            pending.push_back({start, end});
+            if (pending.size() >= MaxPending) {
+                Merge();
+            }
+        }
+
+        bool Overlaps(u64 start, u64 end) const {
+            if (start >= end) [[unlikely]] {
+                return false;
+            }
+            for (const Interval& range : pending) {
+                if (range.start < end && start < range.end) {
+                    return true;
+                }
+            }
+            const auto it = std::ranges::upper_bound(sorted, start, {}, &Interval::end);
+            return it != sorted.end() && it->start < end;
+        }
+
+        void Clear() {
+            sorted.clear();
+            pending.clear();
+        }
+
+    private:
+        static constexpr size_t MaxPending = 32;
+
+        void Merge() {
+            std::ranges::sort(pending, {}, &Interval::start);
+            merged.clear();
+            merged.reserve(sorted.size() + pending.size());
+            const auto push = [this](const Interval& range) {
+                if (!merged.empty() && range.start <= merged.back().end) {
+                    merged.back().end = std::max(merged.back().end, range.end);
+                } else {
+                    merged.push_back(range);
+                }
+            };
+            auto a = sorted.begin();
+            auto b = pending.begin();
+            while (a != sorted.end() || b != pending.end()) {
+                if (b == pending.end() || (a != sorted.end() && a->start <= b->start)) {
+                    push(*a++);
+                } else {
+                    push(*b++);
+                }
+            }
+            std::swap(sorted, merged);
+            pending.clear();
+        }
+
+        /// Disjoint and in order.
+        std::vector<Interval> sorted;
+        /// Added since the last merge, in no order.
+        std::vector<Interval> pending;
+        /// Kept to reuse its memory.
+        std::vector<Interval> merged;
+    };
     const Instance& instance;
     Scheduler& scheduler;
     std::unique_ptr<VideoCore::BlitHelper> blit_helper;
     StagingBufferPool staging_pool;
     struct BufferBarriers {
         const VideoCore::Buffer* handle;
-        using AccessList = IntervalList<Interval>;
-        AccessList read_ranges;
-        AccessList write_ranges;
+        AccessRanges read_ranges;
+        AccessRanges write_ranges;
     };
     BufferBarriers* resource{};
     std::vector<BufferBarriers> resources;
