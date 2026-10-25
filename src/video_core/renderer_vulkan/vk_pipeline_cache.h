@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <array>
 #include <variant>
 #include <tsl/robin_map.h>
 #include "shader_recompiler/profile.h"
@@ -50,8 +51,31 @@ struct Program {
     static constexpr size_t MaxPermutations = 8;
     using ModuleList = boost::container::small_vector<Module, MaxPermutations>;
 
+    struct LastLookup {
+        bool valid{};
+        size_t perm_idx{};
+        VAddr pgm_base{};
+        Shader::Backend::Bindings start{};
+        Shader::RuntimeInfo runtime_info{};
+        std::vector<u32> flattened_ud_buf;
+        /// The fetch shader and the vertex buffer sharps it loads, which are read from memory
+        /// rather than from the flattened user data.
+        std::vector<u32> fetch_code;
+        std::vector<u32> vertex_sharps;
+
+        bool Matches(const Shader::Info& info, const Shader::RuntimeInfo& runtime_info_,
+                     const Shader::Backend::Bindings& start_,
+                     const Shader::Gcn::FetchShaderData& fetch) const;
+        void Remember(const Shader::Info& info, const Shader::RuntimeInfo& runtime_info_,
+                      const Shader::Backend::Bindings& start_, size_t perm_idx_,
+                      const Shader::Gcn::FetchShaderData& fetch);
+    };
+
+    static constexpr size_t NumLastLookups = 4;
     Shader::Info info;
     ModuleList modules{};
+    std::array<LastLookup, NumLastLookups> last_lookups{};
+    size_t next_last_lookup{};
 
     Program() = default;
     Program(Shader::HwStage stage, Shader::SwStage l_stage, Shader::ShaderParams params)
@@ -122,6 +146,9 @@ private:
                                    Shader::Backend::Bindings& binding);
     const Shader::RuntimeInfo& BuildRuntimeInfo(Shader::HwStage stage, Shader::SwStage l_stage);
 
+    /// Returns the pipeline once it can be used, or null to skip draws while it compiles.
+    const GraphicsPipeline* ReadyGraphicsPipeline(GraphicsPipeline* pipeline);
+
     [[nodiscard]] bool IsPipelineCacheDirty() const {
         return num_new_pipelines > 0;
     }
@@ -145,6 +172,8 @@ private:
     std::array<vk::ShaderModule, MaxShaderStages> modules{};
     Shader::Gcn::FetchShaderData* fetch_shader{};
     GraphicsPipelineKey graphics_key{};
+    GraphicsPipelineKey last_graphics_key{};
+    GraphicsPipeline* last_graphics_pipeline{};
     ComputePipelineKey compute_key{};
     u32 num_new_pipelines{}; // new pipelines added to the cache since the game start
     bool async_shader_compile{};

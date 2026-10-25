@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: Copyright 2024-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <algorithm>
+#include <array>
 #include <ranges>
+#include <cstring>
 
 #include "common/hash.h"
 #include "common/io_file.h"
@@ -359,6 +362,9 @@ const GraphicsPipeline* PipelineCache::GetGraphicsPipeline(const DrawIndirectPar
     if (!RefreshGraphicsKey()) {
         return nullptr;
     }
+    if (last_graphics_pipeline && graphics_key == last_graphics_key) {
+        return ReadyGraphicsPipeline(last_graphics_pipeline);
+    }
     const auto [it, is_new] = graphics_pipelines.try_emplace(graphics_key);
     if (is_new) {
         const auto pipeline_hash = std::hash<GraphicsPipelineKey>{}(graphics_key);
@@ -383,6 +389,12 @@ const GraphicsPipeline* PipelineCache::GetGraphicsPipeline(const DrawIndirectPar
         }
     }
     GraphicsPipeline* pipeline = it->second.get();
+    last_graphics_key = graphics_key;
+    last_graphics_pipeline = pipeline;
+    return ReadyGraphicsPipeline(pipeline);
+}
+
+const GraphicsPipeline* PipelineCache::ReadyGraphicsPipeline(GraphicsPipeline* pipeline) {
     if (!pipeline->IsReady()) {
         // A pipeline met in game is still compiling: skip its draws for these few frames instead
         // of stalling the GPU thread. Pipelines from the pipeline cache are waited for, since
@@ -757,6 +769,23 @@ PipelineCache::Result PipelineCache::GetProgram(HwStage hw_stage, SwStage sw_sta
     info.user_data = params.user_data;
     InitializeDescriptorReader(info);
     info.RefreshFlatBuf();
+
+    for (const auto& last : program->last_lookups) {
+        if (!last.valid || last.perm_idx >= program->modules.size()) {
+            continue;
+        }
+        auto& last_module = program->modules[last.perm_idx];
+        if (last.Matches(info, runtime_info, binding, last_module.spec.fetch_shader_data)) {
+            info.AddBindings(binding);
+            if (auto& fetch = last_module.spec.fetch_shader_data; !fetch.Empty()) {
+                fetch_shader = &fetch;
+            }
+            return std::make_tuple(&program->info, last_module.module,
+                                   HashCombine(params.hash, last.perm_idx));
+        }
+    }
+
+    const auto start = binding;
     auto spec = Shader::StageSpecialization(info, runtime_info, profile, binding);
 
     size_t perm_idx = program->modules.size();
@@ -780,7 +809,71 @@ PipelineCache::Result PipelineCache::GetProgram(HwStage hw_stage, SwStage sw_sta
     if (auto& fetch = program->modules[perm_idx].spec.fetch_shader_data; !fetch.Empty()) {
         fetch_shader = &fetch;
     }
+    // The oldest lookup makes way, as the ones made since are more likely to come again.
+    auto& last = program->last_lookups[program->next_last_lookup];
+    program->next_last_lookup = (program->next_last_lookup + 1) % Program::NumLastLookups;
+    last.Remember(info, runtime_info, start, perm_idx,
+                  program->modules[perm_idx].spec.fetch_shader_data);
     return std::make_tuple(&program->info, module, perm_hash);
+}
+
+bool Program::LastLookup::Matches(const Shader::Info& info,
+                                  const Shader::RuntimeInfo& runtime_info_,
+                                  const Shader::Backend::Bindings& start_,
+                                  const Shader::Gcn::FetchShaderData& fetch) const {
+    const bool binds_resources =
+        !info.buffers.empty() || !info.images.empty() || !info.samplers.empty();
+    if (pgm_base != info.pgm_base || (binds_resources && start != start_) ||
+        !(runtime_info == runtime_info_) ||
+        !std::ranges::equal(flattened_ud_buf, info.flattened_ud_buf)) {
+        return false;
+    }
+    if (fetch.Empty()) {
+        return true;
+    }
+    const u32* code = Shader::Gcn::GetFetchShaderCode(info, info.fetch_shader_sgpr_base);
+    if (std::memcmp(code, fetch_code.data(), fetch_code.size() * sizeof(u32)) != 0) {
+        return false;
+    }
+    const u32* sharp = vertex_sharps.data();
+    for (const auto& attrib : fetch.attributes) {
+        const auto current =
+            info.ReadUdReg<std::array<u32, 4>>(attrib.sgpr_base, attrib.dword_offset);
+        if (std::memcmp(current.data(), sharp, sizeof(current)) != 0) {
+            return false;
+        }
+        sharp += current.size();
+    }
+    return true;
+}
+
+void Program::LastLookup::Remember(const Shader::Info& info,
+                                   const Shader::RuntimeInfo& runtime_info_,
+                                   const Shader::Backend::Bindings& start_, size_t perm_idx_,
+                                   const Shader::Gcn::FetchShaderData& fetch) {
+    // Tessellation stages are also specialized on constants read from a buffer in memory.
+    valid = info.sw_stage != Shader::SwStage::TessellationControl &&
+            info.sw_stage != Shader::SwStage::TessellationEval;
+    if (!valid) {
+        return;
+    }
+    perm_idx = perm_idx_;
+    pgm_base = info.pgm_base;
+    start = start_;
+    runtime_info = runtime_info_;
+    flattened_ud_buf.assign(info.flattened_ud_buf.begin(), info.flattened_ud_buf.end());
+    fetch_code.clear();
+    vertex_sharps.clear();
+    if (fetch.Empty()) {
+        return;
+    }
+    const u32* code = Shader::Gcn::GetFetchShaderCode(info, info.fetch_shader_sgpr_base);
+    fetch_code.assign(code, code + fetch.size / sizeof(u32));
+    for (const auto& attrib : fetch.attributes) {
+        const auto sharp =
+            info.ReadUdReg<std::array<u32, 4>>(attrib.sgpr_base, attrib.dword_offset);
+        vertex_sharps.insert(vertex_sharps.end(), sharp.begin(), sharp.end());
+    }
 }
 
 std::optional<vk::ShaderModule> PipelineCache::ReplaceShader(vk::ShaderModule module,
@@ -797,6 +890,7 @@ std::optional<vk::ShaderModule> PipelineCache::ReplaceShader(vk::ShaderModule mo
         }
     }
     if (module_related_pipelines.contains(module)) {
+        last_graphics_pipeline = nullptr;
         auto& pipeline_keys = module_related_pipelines[module];
         for (auto& key : pipeline_keys) {
             if (std::holds_alternative<GraphicsPipelineKey>(key)) {
