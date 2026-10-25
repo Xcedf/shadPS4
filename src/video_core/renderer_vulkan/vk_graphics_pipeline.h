@@ -90,7 +90,7 @@ public:
                      std::span<const Shader::RuntimeInfo, MaxShaderStages> runtime_infos,
                      const Shader::Gcn::FetchShaderData* fetch_shader,
                      std::span<const vk::ShaderModule> modules, SerializationSupport& sdata,
-                     bool preloading);
+                     bool preloading, PipelineCompiler* compiler);
     ~GraphicsPipeline();
 
     const Shader::Gcn::FetchShaderData& GetFetchShader() const noexcept {
@@ -109,7 +109,18 @@ public:
                          u32 step_rate_1) const;
 
 private:
+    struct CompileInputs {
+        /// Guest shader modules by software stage, null for stages the guest doesn't use.
+        std::array<vk::ShaderModule, MaxShaderStages> modules{};
+        SerializationSupport sdata{};
+        bool aux_tcs{};
+        bool aux_tes{};
+        bool aux_fragment{};
+        std::string debug_str;
+    };
+
     void BuildDescSetLayout(bool preloading);
+    void Compile(const CompileInputs& inputs);
 
 private:
     GraphicsPipelineKey key;

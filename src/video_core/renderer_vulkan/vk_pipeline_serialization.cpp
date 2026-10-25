@@ -14,7 +14,7 @@ namespace Serialization {
 /* You should increment versions below once corresponding serialization scheme is changed. */
 static constexpr u32 ShaderBinaryVersion = 14u;
 static constexpr u32 ShaderMetaVersion = 8u;
-static constexpr u32 PipelineKeyVersion = 3u;
+static constexpr u32 PipelineKeyVersion = 4u;
 } // namespace Serialization
 
 namespace Vulkan {
@@ -159,9 +159,9 @@ bool PipelineCache::LoadComputePipeline(Serialization::Archive& ar) {
     const auto [it, is_new] = compute_pipelines.try_emplace(compute_key);
     ASSERT(is_new);
 
-    it.value() =
-        std::make_unique<ComputePipeline>(instance, scheduler, desc_heap, profile, *pipeline_cache,
-                                          compute_key, *infos[0], modules[0], sdata, true);
+    it.value() = std::make_unique<ComputePipeline>(instance, scheduler, desc_heap, profile,
+                                                   *pipeline_cache, compute_key, *infos[0],
+                                                   modules[0], sdata, true, compiler.get());
 
     infos.fill(nullptr);
     modules.fill(nullptr);
@@ -191,6 +191,7 @@ void GraphicsPipeline::SerializationSupport::Serialize(Serialization::Archive& a
     sdata.Write(multisampling);
     sdata.Write(tcs);
     sdata.Write(tes);
+    sdata.Write(fragment);
 }
 
 bool GraphicsPipeline::SerializationSupport::Deserialize(Serialization::Archive& ar) {
@@ -202,6 +203,7 @@ bool GraphicsPipeline::SerializationSupport::Deserialize(Serialization::Archive&
     sdata.Read(multisampling);
     sdata.Read(tcs);
     sdata.Read(tes);
+    sdata.Read(fragment);
     return true;
 }
 
@@ -236,7 +238,7 @@ bool PipelineCache::LoadGraphicsPipeline(Serialization::Archive& ar) {
 
     it.value() = std::make_unique<GraphicsPipeline>(
         instance, scheduler, desc_heap, profile, graphics_key, *pipeline_cache, infos,
-        runtime_infos, fetch_shader, modules, sdata, true);
+        runtime_infos, fetch_shader, modules, sdata, true, compiler.get());
 
     infos.fill(nullptr);
     modules.fill(nullptr);
