@@ -432,6 +432,7 @@ void DynamicState::Commit(const Instance& instance, const vk::CommandBuffer& cmd
         cmdbuf.setAttachmentFeedbackLoopEnableEXT(feedback_loop_enabled
                                                       ? vk::ImageAspectFlagBits::eColor
                                                       : vk::ImageAspectFlagBits::eNone);
+        dirty_state.graphics_pipeline = true;
     }
 }
 

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <array>
+#include <cstring>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -126,6 +128,10 @@ struct DynamicState {
         bool color_write_masks : 1;
         bool line_width : 1;
         bool feedback_loop_enabled : 1;
+        bool graphics_pipeline : 1;
+        bool compute_pipeline : 1;
+        bool graphics_push_constants : 1;
+        bool compute_push_constants : 1;
     } dirty_state{};
 
     Viewports viewports{};
@@ -163,6 +169,12 @@ struct DynamicState {
     ColorWriteMasks color_write_masks{};
     float line_width{};
     bool feedback_loop_enabled{};
+
+    vk::Pipeline graphics_pipeline{};
+    vk::Pipeline compute_pipeline{};
+    static constexpr size_t MaxPushConstantsSize = 128;
+    std::array<u8, MaxPushConstantsSize> graphics_push_constants{};
+    std::array<u8, MaxPushConstantsSize> compute_push_constants{};
 
     /// Commits the dynamic state to the provided command buffer.
     void Commit(const Instance& instance, const vk::CommandBuffer& cmdbuf);
@@ -343,6 +355,41 @@ struct DynamicState {
         if (feedback_loop_enabled != enabled) {
             feedback_loop_enabled = enabled;
             dirty_state.feedback_loop_enabled = true;
+        }
+    }
+
+    void BindGraphicsPipeline(const vk::CommandBuffer& cmdbuf, vk::Pipeline pipeline) {
+        if (dirty_state.graphics_pipeline || graphics_pipeline != pipeline) {
+            cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+            graphics_pipeline = pipeline;
+            dirty_state.graphics_pipeline = false;
+        }
+    }
+
+    void BindComputePipeline(const vk::CommandBuffer& cmdbuf, vk::Pipeline pipeline) {
+        if (dirty_state.compute_pipeline || compute_pipeline != pipeline) {
+            cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
+            compute_pipeline = pipeline;
+            dirty_state.compute_pipeline = false;
+        }
+    }
+
+    void PushConstants(const vk::CommandBuffer& cmdbuf, vk::PipelineLayout layout, bool compute,
+                       vk::ShaderStageFlags stages, const void* data, u32 size) {
+        auto& last = compute ? compute_push_constants : graphics_push_constants;
+        const bool dirty =
+            compute ? dirty_state.compute_push_constants : dirty_state.graphics_push_constants;
+        if (size > last.size() || dirty || std::memcmp(last.data(), data, size) != 0) {
+            cmdbuf.pushConstants(layout, stages, 0u, size, data);
+            if (size > last.size()) {
+                return;
+            }
+            std::memcpy(last.data(), data, size);
+            if (compute) {
+                dirty_state.compute_push_constants = false;
+            } else {
+                dirty_state.graphics_push_constants = false;
+            }
         }
     }
 };
